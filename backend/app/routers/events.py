@@ -10,31 +10,31 @@ router = APIRouter(prefix="/events", tags=["events"])
 @router.post("", status_code=201)
 async def create_event(payload: EventIn) -> dict[str, str]:
     pool = await get_pool()
-    member_exists = await pool.fetchval(
-        "SELECT 1 FROM members WHERE id = $1", payload.member_id
+    student_exists = await pool.fetchval(
+        "SELECT 1 FROM students WHERE id = $1", payload.student_id
     )
-    if not member_exists:
-        raise HTTPException(status_code=404, detail="Member not found")
+    if not student_exists:
+        raise HTTPException(status_code=404, detail="Student not found")
 
     client = get_clickhouse_client()
     client.insert(
         "events",
-        [[payload.event_type, payload.member_id, payload.organizer_id, payload.value, payload.metadata or ""]],
-        column_names=["event_type", "member_id", "organizer_id", "value", "metadata"],
+        [[payload.event_type, payload.student_id, payload.teacher_id, payload.value, payload.metadata or ""]],
+        column_names=["event_type", "student_id", "teacher_id", "value", "metadata"],
     )
     return {"status": "recorded"}
 
 
-@router.get("/members/{member_id}")
-async def list_member_events(member_id: int) -> list[dict]:
+@router.get("/students/{student_id}")
+async def list_student_events(student_id: int) -> list[dict]:
     client = get_clickhouse_client()
     result = client.query(
         """
         SELECT event_id, event_type, event_time, value, metadata
         FROM events
-        WHERE member_id = {member_id:Int32}
+        WHERE student_id = {student_id:Int32}
         ORDER BY event_time DESC
         """,
-        parameters={"member_id": member_id},
+        parameters={"student_id": student_id},
     )
     return [dict(zip(result.column_names, row)) for row in result.result_rows]

@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.clickhouse import close_clickhouse_client, get_clickhouse_client
 from app.db.postgres import close_pool, get_pool
-from app.routers import events, insights, members, organizers
+from app.routers import events, insights, students, teachers
 
 
 @asynccontextmanager
@@ -26,8 +26,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(organizers.router)
-app.include_router(members.router)
+app.include_router(teachers.router)
+app.include_router(students.router)
 app.include_router(events.router)
 app.include_router(insights.router)
 

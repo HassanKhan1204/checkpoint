@@ -1,7 +1,7 @@
 import anthropic
 
 from app.config import settings
-from app.models.schemas import QuietMember
+from app.models.schemas import QuietStudent
 
 _SYSTEM_PROMPT = (
     "You draft short, warm outreach notes for staff (teachers, senior center "
@@ -27,14 +27,14 @@ def _get_client() -> anthropic.AsyncAnthropic:
     return _client
 
 
-async def draft_outreach_note(member: QuietMember) -> str:
-    group = member.group_name or "their group"
-    if member.days_since_check_in is None:
-        context = f"{member.name} (group: {group}) has never checked in."
+async def draft_outreach_note(student: QuietStudent) -> str:
+    group = student.group_name or "their group"
+    if student.days_since_check_in is None:
+        context = f"{student.name} (group: {group}) has never checked in."
     else:
         context = (
-            f"{member.name} (group: {group}) hasn't checked in for "
-            f"{member.days_since_check_in} days."
+            f"{student.name} (group: {group}) hasn't checked in for "
+            f"{student.days_since_check_in} days."
         )
 
     client = _get_client()

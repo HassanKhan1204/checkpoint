@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchMembers, fetchQuietMemberDrafts, logCheckIn } from "./api";
+import { fetchStudents, fetchQuietStudentDrafts, logCheckIn } from "./api";
 import "./App.css";
 
 const DEFAULT_DAYS = 14;
 
-function mergeMembers(members, quietMembers) {
-  const quietById = new Map(quietMembers.map((q) => [q.member_id, q]));
+function mergeStudents(students, quietStudents) {
+  const quietById = new Map(quietStudents.map((q) => [q.student_id, q]));
 
-  return members.map((member) => {
-    const quiet = quietById.get(member.id);
+  return students.map((student) => {
+    const quiet = quietById.get(student.id);
     return {
-      ...member,
+      ...student,
       isQuiet: Boolean(quiet),
       daysSinceCheckIn: quiet ? quiet.days_since_check_in : null,
       draft: quiet ? quiet.draft : null,
@@ -18,8 +18,8 @@ function mergeMembers(members, quietMembers) {
   });
 }
 
-function sortMembers(members) {
-  return [...members].sort((a, b) => {
+function sortStudents(students) {
+  return [...students].sort((a, b) => {
     if (a.isQuiet !== b.isQuiet) return a.isQuiet ? -1 : 1;
     if (a.isQuiet && b.isQuiet) {
       if (a.daysSinceCheckIn === null) return -1;
@@ -30,23 +30,23 @@ function sortMembers(members) {
   });
 }
 
-function StatusBadge({ member }) {
-  if (!member.isQuiet) {
+function StatusBadge({ student }) {
+  if (!student.isQuiet) {
     return <span className="badge badge-ok">OK</span>;
   }
-  if (member.daysSinceCheckIn === null) {
+  if (student.daysSinceCheckIn === null) {
     return <span className="badge badge-quiet">Never checked in</span>;
   }
   return (
     <span className="badge badge-quiet">
-      Quiet &mdash; {member.daysSinceCheckIn}d ago
+      Quiet &mdash; {student.daysSinceCheckIn}d ago
     </span>
   );
 }
 
 export default function App() {
-  const [members, setMembers] = useState([]);
-  const [quietMembers, setQuietMembers] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [quietStudents, setQuietStudents] = useState([]);
   const [days, setDays] = useState(DEFAULT_DAYS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -57,12 +57,12 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const [memberList, quietList] = await Promise.all([
-        fetchMembers(),
-        fetchQuietMemberDrafts(threshold),
+      const [studentList, quietList] = await Promise.all([
+        fetchStudents(),
+        fetchQuietStudentDrafts(threshold),
       ]);
-      setMembers(memberList);
-      setQuietMembers(quietList);
+      setStudents(studentList);
+      setQuietStudents(quietList);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -76,15 +76,15 @@ export default function App() {
   }, []);
 
   const rows = useMemo(
-    () => sortMembers(mergeMembers(members, quietMembers)),
-    [members, quietMembers]
+    () => sortStudents(mergeStudents(students, quietStudents)),
+    [students, quietStudents]
   );
 
-  async function handleCheckIn(member) {
-    setPendingId(member.id);
+  async function handleCheckIn(student) {
+    setPendingId(student.id);
     setError(null);
     try {
-      await logCheckIn({ memberId: member.id, organizerId: member.organizer_id });
+      await logCheckIn({ studentId: student.id, teacherId: student.teacher_id });
       await refresh();
     } catch (err) {
       setError(err.message);
@@ -93,10 +93,10 @@ export default function App() {
     }
   }
 
-  async function handleCopy(member) {
-    await navigator.clipboard.writeText(member.draft);
-    setCopiedId(member.id);
-    setTimeout(() => setCopiedId((id) => (id === member.id ? null : id)), 1500);
+  async function handleCopy(student) {
+    await navigator.clipboard.writeText(student.draft);
+    setCopiedId(student.id);
+    setTimeout(() => setCopiedId((id) => (id === student.id ? null : id)), 1500);
   }
 
   return (
@@ -131,19 +131,19 @@ export default function App() {
           </tr>
         </thead>
         <tbody>
-          {rows.map((member) => (
-            <tr key={member.id} className={member.isQuiet ? "row-quiet" : ""}>
-              <td>{member.name}</td>
-              <td>{member.group_name ?? "—"}</td>
+          {rows.map((student) => (
+            <tr key={student.id} className={student.isQuiet ? "row-quiet" : ""}>
+              <td>{student.name}</td>
+              <td>{student.group_name ?? "—"}</td>
               <td>
-                <StatusBadge member={member} />
+                <StatusBadge student={student} />
               </td>
               <td className="draft-cell">
-                {member.isQuiet && member.draft ? (
+                {student.isQuiet && student.draft ? (
                   <>
-                    <span className="draft-text">{member.draft}</span>
-                    <button onClick={() => handleCopy(member)}>
-                      {copiedId === member.id ? "Copied!" : "Copy"}
+                    <span className="draft-text">{student.draft}</span>
+                    <button onClick={() => handleCopy(student)}>
+                      {copiedId === student.id ? "Copied!" : "Copy"}
                     </button>
                   </>
                 ) : (
@@ -152,17 +152,17 @@ export default function App() {
               </td>
               <td>
                 <button
-                  onClick={() => handleCheckIn(member)}
-                  disabled={pendingId === member.id}
+                  onClick={() => handleCheckIn(student)}
+                  disabled={pendingId === student.id}
                 >
-                  {pendingId === member.id ? "Logging..." : "Log check-in"}
+                  {pendingId === student.id ? "Logging..." : "Log check-in"}
                 </button>
               </td>
             </tr>
           ))}
           {rows.length === 0 && !loading && (
             <tr>
-              <td colSpan={5}>No members yet.</td>
+              <td colSpan={5}>No students yet.</td>
             </tr>
           )}
         </tbody>

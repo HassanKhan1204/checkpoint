@@ -4,54 +4,54 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr
 
 
-class OrganizerBase(BaseModel):
+class TeacherBase(BaseModel):
     name: str
     email: EmailStr
     role: Optional[str] = None
 
 
-class OrganizerCreate(OrganizerBase):
+class TeacherCreate(TeacherBase):
     pass
 
 
-class Organizer(OrganizerBase):
+class Teacher(TeacherBase):
     id: int
     created_at: datetime
 
 
-class MemberBase(BaseModel):
-    organizer_id: int
+class StudentBase(BaseModel):
+    teacher_id: int
     name: str
     group_name: Optional[str] = None
     contact: Optional[str] = None
     notes: Optional[str] = None
 
 
-class MemberCreate(MemberBase):
+class StudentCreate(StudentBase):
     pass
 
 
-class Member(MemberBase):
+class Student(StudentBase):
     id: int
     created_at: datetime
 
 
 class EventIn(BaseModel):
     event_type: str
-    member_id: int
-    organizer_id: int
+    student_id: int
+    teacher_id: int
     value: Optional[float] = None
     metadata: Optional[str] = None
 
 
-class QuietMember(BaseModel):
-    member_id: int
+class QuietStudent(BaseModel):
+    student_id: int
     name: str
-    organizer_id: int
+    teacher_id: int
     group_name: Optional[str] = None
     last_check_in: Optional[datetime] = None
     days_since_check_in: Optional[int] = None
 
 
-class OutreachDraft(QuietMember):
+class OutreachDraft(QuietStudent):
     draft: str

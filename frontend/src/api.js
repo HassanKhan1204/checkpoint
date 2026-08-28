@@ -9,22 +9,22 @@ async function request(path, options) {
   return res.json();
 }
 
-export function fetchMembers() {
-  return request("/members");
+export function fetchStudents() {
+  return request("/students");
 }
 
-export function fetchQuietMemberDrafts(days) {
-  return request(`/insights/quiet-members/drafts?days=${days}`);
+export function fetchQuietStudentDrafts(days) {
+  return request(`/insights/quiet-students/drafts?days=${days}`);
 }
 
-export function logCheckIn({ memberId, organizerId }) {
+export function logCheckIn({ studentId, teacherId }) {
   return request("/events", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       event_type: "check_in",
-      member_id: memberId,
-      organizer_id: organizerId,
+      student_id: studentId,
+      teacher_id: teacherId,
     }),
   });
 }

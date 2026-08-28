@@ -1,6 +1,6 @@
--- Postgres (OLTP): source of truth for organizers and the members/students they support.
+-- Postgres (OLTP): source of truth for teachers and the students they support.
 
-CREATE TABLE IF NOT EXISTS organizers (
+CREATE TABLE IF NOT EXISTS teachers (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
@@ -8,9 +8,9 @@ CREATE TABLE IF NOT EXISTS organizers (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS members (
+CREATE TABLE IF NOT EXISTS students (
     id SERIAL PRIMARY KEY,
-    organizer_id INTEGER NOT NULL REFERENCES organizers(id),
+    teacher_id INTEGER NOT NULL REFERENCES teachers(id),
     name TEXT NOT NULL,
     group_name TEXT,
     contact TEXT,
@@ -18,4 +18,4 @@ CREATE TABLE IF NOT EXISTS members (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_members_organizer_id ON members(organizer_id);
+CREATE INDEX IF NOT EXISTS idx_students_teacher_id ON students(teacher_id);
