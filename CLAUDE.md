@@ -5,12 +5,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Checkpoint
 
 ## What this is
-A one-day hackathon build (ClickHouse Hackathon, SF) for the reading crisis /
-loneliness epidemic tracks. Core idea: organizers (teachers, senior center
-staff) log quick check-ins/assessments on the people they support. The system
-detects trends automatically and an agent flags who needs attention and drafts
-a next step — instead of the organizer having to notice patterns manually in
-a spreadsheet.
+A one-day hackathon build (ClickHouse Hackathon, SF) for the reading crisis
+track. Core idea: teachers log quick reading assessments on their students —
+a fluency score plus error type tags. The system detects declining reading
+trends automatically and an agent drafts a parent note with a suggested next
+step — instead of the teacher having to notice patterns manually in a
+spreadsheet.
 
 ## Architecture
 - **Postgres (OLTP)**: source of truth — students/members, organizers, groups
