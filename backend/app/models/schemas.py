@@ -51,3 +51,7 @@ class QuietMember(BaseModel):
     group_name: Optional[str] = None
     last_check_in: Optional[datetime] = None
     days_since_check_in: Optional[int] = None
+
+
+class OutreachDraft(QuietMember):
+    draft: str

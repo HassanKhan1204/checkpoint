@@ -1,5 +1,5 @@
 .dashboard {
-  max-width: 720px;
+  max-width: 960px;
   margin: 2rem auto;
   padding: 0 1rem;
   font-family: system-ui, sans-serif;
@@ -52,4 +52,19 @@ td {
 
 .error {
   color: #c0342c;
+}
+
+.draft-cell {
+  max-width: 320px;
+}
+
+.draft-text {
+  display: block;
+  font-size: 0.9rem;
+  color: #333;
+  margin-bottom: 0.35rem;
+}
+
+.draft-empty {
+  color: #999;
 }

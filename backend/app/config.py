@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     clickhouse_password: str = ""
     clickhouse_database: str = "default"
 
+    anthropic_api_key: str = ""
+    anthropic_workspace_id: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 

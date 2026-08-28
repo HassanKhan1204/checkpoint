@@ -1,11 +1,14 @@
+import asyncio
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 
+from app.config import settings
 from app.db.clickhouse import get_clickhouse_client
 from app.db.postgres import get_pool
-from app.models.schemas import QuietMember
+from app.models.schemas import OutreachDraft, QuietMember
+from app.services.outreach import draft_outreach_note
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -16,11 +19,7 @@ def _sort_key(member: QuietMember) -> tuple[int, int]:
     return (1, -member.days_since_check_in)
 
 
-@router.get("/quiet-members", response_model=list[QuietMember])
-async def quiet_members(
-    days: int = Query(default=14, ge=1, description="Flag members with no check-in in this many days"),
-    organizer_id: Optional[int] = Query(default=None),
-) -> list[QuietMember]:
+async def _get_quiet_members(days: int, organizer_id: Optional[int]) -> list[QuietMember]:
     pool = await get_pool()
     if organizer_id is not None:
         member_rows = await pool.fetch(
@@ -66,3 +65,29 @@ async def quiet_members(
 
     quiet.sort(key=_sort_key)
     return quiet
+
+
+@router.get("/quiet-members", response_model=list[QuietMember])
+async def quiet_members(
+    days: int = Query(default=14, ge=1, description="Flag members with no check-in in this many days"),
+    organizer_id: Optional[int] = Query(default=None),
+) -> list[QuietMember]:
+    return await _get_quiet_members(days, organizer_id)
+
+
+@router.get("/quiet-members/drafts", response_model=list[OutreachDraft])
+async def quiet_members_drafts(
+    days: int = Query(default=14, ge=1, description="Flag members with no check-in in this many days"),
+    organizer_id: Optional[int] = Query(default=None),
+) -> list[OutreachDraft]:
+    if not settings.anthropic_api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="ANTHROPIC_API_KEY is not configured — set it in backend/.env",
+        )
+    quiet = await _get_quiet_members(days, organizer_id)
+    drafts = await asyncio.gather(*(draft_outreach_note(member) for member in quiet))
+    return [
+        OutreachDraft(**member.model_dump(), draft=draft)
+        for member, draft in zip(quiet, drafts)
+    ]

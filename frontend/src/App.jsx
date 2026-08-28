@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchMembers, fetchQuietMembers, logCheckIn } from "./api";
+import { fetchMembers, fetchQuietMemberDrafts, logCheckIn } from "./api";
 import "./App.css";
 
 const DEFAULT_DAYS = 14;
@@ -13,6 +13,7 @@ function mergeMembers(members, quietMembers) {
       ...member,
       isQuiet: Boolean(quiet),
       daysSinceCheckIn: quiet ? quiet.days_since_check_in : null,
+      draft: quiet ? quiet.draft : null,
     };
   });
 }
@@ -50,6 +51,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pendingId, setPendingId] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
 
   async function refresh(threshold = days) {
     setLoading(true);
@@ -57,7 +59,7 @@ export default function App() {
     try {
       const [memberList, quietList] = await Promise.all([
         fetchMembers(),
-        fetchQuietMembers(threshold),
+        fetchQuietMemberDrafts(threshold),
       ]);
       setMembers(memberList);
       setQuietMembers(quietList);
@@ -91,6 +93,12 @@ export default function App() {
     }
   }
 
+  async function handleCopy(member) {
+    await navigator.clipboard.writeText(member.draft);
+    setCopiedId(member.id);
+    setTimeout(() => setCopiedId((id) => (id === member.id ? null : id)), 1500);
+  }
+
   return (
     <div className="dashboard">
       <h1>Checkpoint</h1>
@@ -118,6 +126,7 @@ export default function App() {
             <th>Name</th>
             <th>Group</th>
             <th>Status</th>
+            <th>Outreach draft</th>
             <th></th>
           </tr>
         </thead>
@@ -128,6 +137,18 @@ export default function App() {
               <td>{member.group_name ?? "—"}</td>
               <td>
                 <StatusBadge member={member} />
+              </td>
+              <td className="draft-cell">
+                {member.isQuiet && member.draft ? (
+                  <>
+                    <span className="draft-text">{member.draft}</span>
+                    <button onClick={() => handleCopy(member)}>
+                      {copiedId === member.id ? "Copied!" : "Copy"}
+                    </button>
+                  </>
+                ) : (
+                  <span className="draft-empty">—</span>
+                )}
               </td>
               <td>
                 <button
@@ -141,7 +162,7 @@ export default function App() {
           ))}
           {rows.length === 0 && !loading && (
             <tr>
-              <td colSpan={4}>No members yet.</td>
+              <td colSpan={5}>No members yet.</td>
             </tr>
           )}
         </tbody>
