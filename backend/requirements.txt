@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+asyncpg
+clickhouse-connect
+pydantic
+pydantic-settings
+email-validator
+python-dotenv
