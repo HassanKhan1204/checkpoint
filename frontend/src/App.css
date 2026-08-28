@@ -1,0 +1,55 @@
+.dashboard {
+  max-width: 720px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  font-family: system-ui, sans-serif;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.controls input {
+  width: 4rem;
+  margin-left: 0.5rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #ddd;
+}
+
+.row-quiet {
+  background: #fff4f4;
+}
+
+.badge {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.badge-ok {
+  background: #e3f7e8;
+  color: #1a7f37;
+}
+
+.badge-quiet {
+  background: #fde2e2;
+  color: #c0342c;
+}
+
+.error {
+  color: #c0342c;
+}

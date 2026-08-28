@@ -42,3 +42,12 @@ class EventIn(BaseModel):
     organizer_id: int
     value: Optional[float] = None
     metadata: Optional[str] = None
+
+
+class QuietMember(BaseModel):
+    member_id: int
+    name: str
+    organizer_id: int
+    group_name: Optional[str] = None
+    last_check_in: Optional[datetime] = None
+    days_since_check_in: Optional[int] = None
