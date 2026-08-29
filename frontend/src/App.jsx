@@ -164,6 +164,16 @@ function flagReason(student) {
   return `Fluency dropped from an average of ${avg} to ${current} words per minute${tagPhrase}.`;
 }
 
+// A mailto: link pre-filled with the drafted note — recipient left blank
+// (rather than omitting the button) when no parent email is on file, so
+// the teacher can still open it and address it themselves.
+function buildMailtoHref(student) {
+  const to = student.parent_email ?? "";
+  const subject = encodeURIComponent(`A quick note about ${student.name}'s reading`);
+  const body = encodeURIComponent(student.draft ?? "");
+  return `mailto:${to}?subject=${subject}&body=${body}`;
+}
+
 function StatusBadge({ student }) {
   if (student.status === "declining") {
     return <span className="badge badge-declining">Needs attention</span>;
@@ -246,9 +256,18 @@ function NoteModal({ student, onClose, onCopy, copied }) {
         <div className="letter-card">
           <p className="letter-text">{student.draft}</p>
         </div>
-        <button className="note-copy-button" onClick={onCopy}>
-          {copied ? "Copied!" : "Copy note"}
-        </button>
+        <div className="note-actions">
+          <button className="note-copy-button" onClick={onCopy}>
+            {copied ? "Copied!" : "Copy note"}
+          </button>
+          <a
+            className="note-email-button"
+            href={buildMailtoHref(student)}
+            title={student.parent_email ? undefined : "No parent email on file — you can still address it yourself"}
+          >
+            ✉️ Open in email
+          </a>
+        </div>
       </div>
     </div>
   );

@@ -449,8 +449,13 @@ input {
   white-space: pre-line;
 }
 
+.note-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
 .note-copy-button {
-  width: 100%;
+  flex: 1;
   font-size: var(--text-base);
   font-weight: 700;
   padding: var(--space-3) var(--space-5);
@@ -463,6 +468,28 @@ input {
   background: var(--color-accent-hover);
   border-color: var(--color-accent-hover);
   color: var(--color-surface);
+}
+
+.note-email-button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 700;
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.note-email-button:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent-hover);
 }
 
 /* ---- Log assessment form ---------------------------------------------- */
