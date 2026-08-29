@@ -17,6 +17,10 @@ export function fetchDecliningStudentDrafts() {
   return request("/insights/declining-students/drafts");
 }
 
+export function fetchStudentEvents(studentId) {
+  return request(`/events/students/${studentId}`);
+}
+
 export function logAssessment({ studentId, teacherId, fluencyScore, accuracyPct, errorTags }) {
   return request("/events", {
     method: "POST",

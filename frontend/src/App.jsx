@@ -1,10 +1,53 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchStudents, fetchDecliningStudentDrafts, logAssessment } from "./api";
+import {
+  fetchStudents,
+  fetchDecliningStudentDrafts,
+  fetchStudentEvents,
+  logAssessment,
+} from "./api";
 import "./App.css";
 
 const STATUS_RANK = { declining: 0, insufficient_data: 1, ok: 2 };
 
-function mergeStudents(students, decliningList) {
+const SPARKLINE_COLOR = {
+  declining: "var(--color-status-attention-text)",
+  insufficient_data: "var(--color-status-pending-text)",
+  ok: "var(--color-status-ontrack-text)",
+};
+
+// The insights endpoint only returns history for flagged students (that's
+// all it needs internally) — for "on track" students we pull their raw
+// event history separately so their sparkline has real data too.
+async function fetchOkHistories(students, decliningIds) {
+  const okStudents = students.filter((s) => !decliningIds.has(s.id));
+  const eventLists = await Promise.all(okStudents.map((s) => fetchStudentEvents(s.id)));
+
+  const historyById = new Map();
+  okStudents.forEach((student, i) => {
+    const history = eventLists[i]
+      .filter((event) => event.event_type === "reading_assessment")
+      .slice(0, 3) // API returns most-recent-first
+      .reverse() // chronological, oldest first — matches the insights shape
+      .map((event) => {
+        let parsed = {};
+        try {
+          parsed = JSON.parse(event.metadata || "{}");
+        } catch {
+          parsed = {};
+        }
+        return {
+          event_time: event.event_time,
+          fluency_score: event.value,
+          accuracy_pct: parsed.accuracy_pct ?? null,
+          error_tags: parsed.error_tags ?? [],
+        };
+      });
+    historyById.set(student.id, history);
+  });
+  return historyById;
+}
+
+function mergeStudents(students, decliningList, okHistoryById) {
   const infoById = new Map(decliningList.map((d, index) => [d.student_id, { ...d, apiOrder: index }]));
 
   return students.map((student) => {
@@ -12,7 +55,7 @@ function mergeStudents(students, decliningList) {
     return {
       ...student,
       status: info ? info.status : "ok",
-      history: info ? info.history : [],
+      history: info ? info.history : okHistoryById.get(student.id) ?? [],
       averagePreviousScore: info ? info.average_previous_score : null,
       draft: info ? info.draft : null,
       apiOrder: info ? info.apiOrder : Infinity,
@@ -32,29 +75,70 @@ function sortStudents(students) {
 
 function StatusBadge({ student }) {
   if (student.status === "declining") {
-    return <span className="badge badge-declining">Declining</span>;
+    return <span className="badge badge-declining">Needs attention</span>;
   }
   if (student.status === "insufficient_data") {
-    return <span className="badge badge-pending">Not enough data</span>;
+    return <span className="badge badge-pending">Not enough data yet</span>;
   }
-  return <span className="badge badge-ok">OK</span>;
+  return <span className="badge badge-ok">On track</span>;
 }
 
-function HistoryCell({ student }) {
-  if (student.history.length === 0) {
-    return <span className="draft-empty">—</span>;
+function Sparkline({ history, status }) {
+  if (history.length === 0) {
+    return <span className="sparkline-empty">No history yet</span>;
   }
-  const scores = student.history.map((point) => Math.round(point.fluency_score)).join(" → ");
+
+  const scores = history.map((point) => point.fluency_score);
+  const min = Math.min(...scores);
+  const max = Math.max(...scores);
+  const range = max - min || 1; // avoid divide-by-zero when scores are flat
+  const width = 96;
+  const height = 32;
+  const pad = 5;
+
+  const points = scores.map((score, i) => {
+    const x = scores.length === 1 ? width / 2 : pad + (i / (scores.length - 1)) * (width - pad * 2);
+    const y = height - pad - ((score - min) / range) * (height - pad * 2);
+    return [x, y];
+  });
+
+  const color = SPARKLINE_COLOR[status] ?? "var(--color-text-muted)";
+  const pathD = points.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x},${y}`).join(" ");
+
   return (
-    <span className="history-text">
-      {scores} <span className="history-unit">WCPM</span>
-    </span>
+    <svg
+      className="sparkline"
+      viewBox={`0 0 ${width} ${height}`}
+      role="img"
+      aria-label={`Fluency scores: ${scores.join(", ")}`}
+    >
+      {points.length > 1 && (
+        <path d={pathD} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      )}
+      {points.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r="3" fill={color} />
+      ))}
+    </svg>
+  );
+}
+
+function ErrorTags({ tags }) {
+  if (!tags || tags.length === 0) return null;
+  return (
+    <div className="error-tags">
+      {tags.map((tag) => (
+        <span key={tag} className="error-tag">
+          {tag}
+        </span>
+      ))}
+    </div>
   );
 }
 
 export default function App() {
   const [students, setStudents] = useState([]);
   const [decliningList, setDecliningList] = useState([]);
+  const [okHistoryById, setOkHistoryById] = useState(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pendingId, setPendingId] = useState(null);
@@ -68,8 +152,12 @@ export default function App() {
         fetchStudents(),
         fetchDecliningStudentDrafts(),
       ]);
+      const decliningIds = new Set(declining.map((d) => d.student_id));
+      const okHistories = await fetchOkHistories(studentList, decliningIds);
+
       setStudents(studentList);
       setDecliningList(declining);
+      setOkHistoryById(okHistories);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -83,8 +171,8 @@ export default function App() {
   }, []);
 
   const rows = useMemo(
-    () => sortStudents(mergeStudents(students, decliningList)),
-    [students, decliningList]
+    () => sortStudents(mergeStudents(students, decliningList, okHistoryById)),
+    [students, decliningList, okHistoryById]
   );
 
   async function handleLogAssessment(student, formEvent) {
@@ -134,77 +222,66 @@ export default function App() {
 
       {error && <p className="error">{error}</p>}
 
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Group</th>
-            <th>Status</th>
-            <th>Fluency history</th>
-            <th>Parent note draft</th>
-            <th>Log assessment</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((student) => (
-            <tr key={student.id} className={`row-${student.status}`}>
-              <td>{student.name}</td>
-              <td>{student.group_name ?? "—"}</td>
-              <td>
+      <div className="card-grid">
+        {rows.map((student) => {
+          const latestTags =
+            student.history.length > 0 ? student.history[student.history.length - 1].error_tags : [];
+
+          return (
+            <div key={student.id} className={`student-card card-${student.status}`}>
+              <div className="card-header">
+                <div>
+                  <h3 className="card-name">{student.name}</h3>
+                  <span className="card-group">{student.group_name ?? "—"}</span>
+                </div>
                 <StatusBadge student={student} />
-              </td>
-              <td>
-                <HistoryCell student={student} />
-              </td>
-              <td className="draft-cell">
-                {student.draft ? (
-                  <>
-                    <span className="draft-text">{student.draft}</span>
-                    <button onClick={() => handleCopy(student)}>
-                      {copiedId === student.id ? "Copied!" : "Copy"}
-                    </button>
-                  </>
-                ) : (
-                  <span className="draft-empty">—</span>
-                )}
-              </td>
-              <td>
-                <form
-                  className="assessment-form"
-                  onSubmit={(e) => handleLogAssessment(student, e)}
-                >
-                  <input
-                    name="fluencyScore"
-                    type="number"
-                    min="0"
-                    step="1"
-                    placeholder="WCPM"
-                    required
-                  />
-                  <input
-                    name="accuracyPct"
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    placeholder="Acc %"
-                    required
-                  />
-                  <input name="errorTags" type="text" placeholder="tags, comma-sep" />
-                  <button type="submit" disabled={pendingId === student.id}>
-                    {pendingId === student.id ? "Logging..." : "Log"}
+              </div>
+
+              <div className="card-body">
+                <Sparkline history={student.history} status={student.status} />
+                {student.status !== "ok" && <ErrorTags tags={latestTags} />}
+              </div>
+
+              {student.draft && (
+                <div className="card-draft">
+                  <p className="draft-text">{student.draft}</p>
+                  <button onClick={() => handleCopy(student)}>
+                    {copiedId === student.id ? "Copied!" : "Copy"}
                   </button>
-                </form>
-              </td>
-            </tr>
-          ))}
-          {rows.length === 0 && !loading && (
-            <tr>
-              <td colSpan={6}>No students yet.</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+                </div>
+              )}
+
+              <form
+                className="assessment-form"
+                onSubmit={(e) => handleLogAssessment(student, e)}
+              >
+                <input
+                  name="fluencyScore"
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="WCPM"
+                  required
+                />
+                <input
+                  name="accuracyPct"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  placeholder="Acc %"
+                  required
+                />
+                <input name="errorTags" type="text" placeholder="tags, comma-sep" />
+                <button type="submit" disabled={pendingId === student.id}>
+                  {pendingId === student.id ? "Logging..." : "Log"}
+                </button>
+              </form>
+            </div>
+          );
+        })}
+        {rows.length === 0 && !loading && <p>No students yet.</p>}
+      </div>
     </div>
   );
 }
