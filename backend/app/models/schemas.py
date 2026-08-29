@@ -36,6 +36,20 @@ class Student(StudentBase):
     created_at: datetime
 
 
+class PassageBase(BaseModel):
+    grade_level: str
+    text: str
+
+
+class PassageCreate(PassageBase):
+    pass
+
+
+class Passage(PassageBase):
+    id: int
+    created_at: datetime
+
+
 class EventIn(BaseModel):
     student_id: int
     teacher_id: int
