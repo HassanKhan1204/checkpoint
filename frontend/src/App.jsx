@@ -1,13 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchStudents,
   fetchDecliningStudentDrafts,
   fetchStudentEvents,
+  fetchPassages,
   logAssessment,
 } from "./api";
 import "./App.css";
 
 const STATUS_RANK = { declining: 0, insufficient_data: 1, ok: 2 };
+
+// Chrome/Edge ship this behind a webkit prefix; Firefox doesn't implement it
+// at all. Compute once and branch on it rather than failing inside the
+// click handler.
+const SpeechRecognitionAPI =
+  typeof window !== "undefined" ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
 
 const SPARKLINE_COLOR = {
   declining: "var(--color-status-attention-text)",
@@ -193,6 +200,181 @@ function NoteModal({ student, onClose, onCopy, copied }) {
   );
 }
 
+function formatElapsed(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
+  const seconds = (totalSeconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
+function ListenModal({ student, onClose }) {
+  const [passage, setPassage] = useState(null);
+  const [passageIsFallback, setPassageIsFallback] = useState(false);
+  const [passageError, setPassageError] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [interimText, setInterimText] = useState("");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [speechError, setSpeechError] = useState(null);
+
+  const recognitionRef = useRef(null);
+  const timerRef = useRef(null);
+  const keepListeningRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPassage() {
+      try {
+        let results = await fetchPassages(student.group_name);
+        let fallback = false;
+        if (results.length === 0) {
+          results = await fetchPassages();
+          fallback = true;
+        }
+        if (!cancelled) {
+          setPassage(results[0] ?? null);
+          setPassageIsFallback(fallback && results.length > 0);
+        }
+      } catch (err) {
+        if (!cancelled) setPassageError(err.message);
+      }
+    }
+    loadPassage();
+    return () => {
+      cancelled = true;
+    };
+  }, [student.group_name]);
+
+  // Stop everything on unmount — don't leave the mic listening or the
+  // timer running after the modal closes.
+  useEffect(() => {
+    return () => {
+      keepListeningRef.current = false;
+      recognitionRef.current?.stop();
+      clearInterval(timerRef.current);
+    };
+  }, []);
+
+  function startRecording() {
+    setSpeechError(null);
+    setTranscript("");
+    setInterimText("");
+    setElapsedSeconds(0);
+
+    const recognition = new SpeechRecognitionAPI();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    recognition.onresult = (event) => {
+      let finalChunk = "";
+      let interimChunk = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          finalChunk += result[0].transcript;
+        } else {
+          interimChunk += result[0].transcript;
+        }
+      }
+      if (finalChunk) {
+        setTranscript((prev) => (prev ? `${prev} ${finalChunk}`.trim() : finalChunk.trim()));
+      }
+      setInterimText(interimChunk);
+    };
+
+    recognition.onerror = (event) => {
+      if (event.error === "no-speech") return; // benign — keep listening
+      setSpeechError(`Speech recognition error: ${event.error}`);
+    };
+
+    recognition.onend = () => {
+      // Chrome ends the session on silence even with continuous: true —
+      // restart it transparently as long as we're still "recording".
+      if (keepListeningRef.current) {
+        recognition.start();
+      }
+    };
+
+    keepListeningRef.current = true;
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+
+    timerRef.current = setInterval(() => {
+      setElapsedSeconds((s) => s + 1);
+    }, 1000);
+  }
+
+  function stopRecording() {
+    keepListeningRef.current = false;
+    recognitionRef.current?.stop();
+    clearInterval(timerRef.current);
+    setIsRecording(false);
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="listen-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Listen to ${student.name} read`}
+      >
+        <button className="modal-close" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+        <h2 className="modal-student-name">Listen to {student.name} read</h2>
+
+        {passageError && <p className="error">{passageError}</p>}
+        {!passageError && !passage && <p className="listen-loading">Finding a passage...</p>}
+        {passage && (
+          <div className="passage-card">
+            <span className="passage-grade">{passage.grade_level}</span>
+            <p className="passage-text">{passage.text}</p>
+            {passageIsFallback && (
+              <p className="passage-fallback-note">
+                No passage found for {student.group_name ?? "this grade"} — showing a different grade instead.
+              </p>
+            )}
+          </div>
+        )}
+
+        {!SpeechRecognitionAPI ? (
+          <p className="error">
+            Speech recognition isn't supported in this browser. Try Chrome or Edge.
+          </p>
+        ) : (
+          <div className="listen-controls">
+            <button
+              className={isRecording ? "stop-button" : "start-button"}
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={!passage}
+            >
+              {isRecording ? "⏹ Stop recording" : "🎤 Start recording"}
+            </button>
+            {isRecording && <span className="recording-indicator">● Recording</span>}
+            <span className="listen-timer">{formatElapsed(elapsedSeconds)}</span>
+          </div>
+        )}
+
+        {speechError && <p className="error">{speechError}</p>}
+
+        <div className="transcript-box">
+          {transcript || interimText ? (
+            <p className="transcript-text">
+              {transcript}
+              {interimText && <span className="transcript-interim"> {interimText}</span>}
+            </p>
+          ) : (
+            <p className="transcript-empty">The transcript will appear here as the student reads.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [students, setStudents] = useState([]);
   const [decliningList, setDecliningList] = useState([]);
@@ -202,6 +384,7 @@ export default function App() {
   const [pendingId, setPendingId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
+  const [listenStudentId, setListenStudentId] = useState(null);
 
   async function refresh() {
     setLoading(true);
@@ -230,13 +413,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (selectedId === null) return;
+    if (selectedId === null && listenStudentId === null) return;
     function handleKeyDown(e) {
-      if (e.key === "Escape") setSelectedId(null);
+      if (e.key === "Escape") {
+        setSelectedId(null);
+        setListenStudentId(null);
+      }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedId]);
+  }, [selectedId, listenStudentId]);
 
   const rows = useMemo(
     () => sortStudents(mergeStudents(students, decliningList, okHistoryById)),
@@ -244,6 +430,7 @@ export default function App() {
   );
 
   const selectedStudent = rows.find((s) => s.id === selectedId) ?? null;
+  const listenStudent = rows.find((s) => s.id === listenStudentId) ?? null;
   const decliningCount = rows.filter((s) => s.status === "declining").length;
 
   async function handleLogAssessment(student, formEvent) {
@@ -339,6 +526,16 @@ export default function App() {
 
               {hasNote && <span className="view-note-hint">✉️ Click to view parent note</span>}
 
+              <button
+                className="listen-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setListenStudentId(student.id);
+                }}
+              >
+                🎤 Listen to student read
+              </button>
+
               <form
                 className="assessment-form"
                 onClick={(e) => e.stopPropagation()}
@@ -379,6 +576,10 @@ export default function App() {
           onCopy={() => handleCopy(selectedStudent)}
           copied={copiedId === selectedStudent.id}
         />
+      )}
+
+      {listenStudent && (
+        <ListenModal student={listenStudent} onClose={() => setListenStudentId(null)} />
       )}
     </div>
   );

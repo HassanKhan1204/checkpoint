@@ -21,6 +21,11 @@ export function fetchStudentEvents(studentId) {
   return request(`/events/students/${studentId}`);
 }
 
+export function fetchPassages(gradeLevel) {
+  const query = gradeLevel ? `?grade_level=${encodeURIComponent(gradeLevel)}` : "";
+  return request(`/passages${query}`);
+}
+
 export function logAssessment({ studentId, teacherId, fluencyScore, accuracyPct, errorTags }) {
   return request("/events", {
     method: "POST",
