@@ -443,7 +443,12 @@ function ListenModal({ student, onClose, onAssessmentLogged }) {
             Speech recognition isn't supported in this browser. Try Chrome or Edge.
           </p>
         ) : (
-          <div className="listen-controls">
+          <>
+            <p className="experimental-note">
+              Experimental: uses your browser's speech recognition to estimate reading fluency
+              automatically. Best in a quiet room.
+            </p>
+            <div className="listen-controls">
             <button
               className={isRecording ? "stop-button" : "start-button"}
               onClick={isRecording ? stopRecording : startRecording}
@@ -453,7 +458,8 @@ function ListenModal({ student, onClose, onAssessmentLogged }) {
             </button>
             {isRecording && <span className="recording-indicator">● Recording</span>}
             <span className="listen-timer">{formatElapsed(elapsedSeconds)}</span>
-          </div>
+            </div>
+          </>
         )}
 
         {speechError && <p className="error">{speechError}</p>}

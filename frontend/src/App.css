@@ -403,6 +403,13 @@ input {
   margin: var(--space-3) 0 0;
 }
 
+.experimental-note {
+  font-size: var(--text-xs);
+  font-style: italic;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-4);
+}
+
 .listen-controls {
   display: flex;
   align-items: center;
