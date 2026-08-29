@@ -4,9 +4,20 @@
   padding: 0 var(--space-4);
 }
 
+.app-header {
+  margin-bottom: var(--space-5);
+}
+
 .dashboard h1 {
   font-size: var(--text-2xl);
-  margin-bottom: var(--space-4);
+  margin: 0;
+}
+
+.app-tagline {
+  font-size: var(--text-base);
+  color: var(--color-text-muted);
+  max-width: 46rem;
+  margin: var(--space-1) 0 0;
 }
 
 .controls {

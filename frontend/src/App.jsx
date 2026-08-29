@@ -584,7 +584,13 @@ export default function App() {
 
   return (
     <div className="dashboard">
-      <h1>Checkpoint — Reading Trends</h1>
+      <header className="app-header">
+        <h1>Checkpoint</h1>
+        <p className="app-tagline">
+          Checkpoint helps teachers spot reading trends early and reach out to families
+          before a small dip becomes a bigger gap.
+        </p>
+      </header>
 
       <div className="controls">
         <button onClick={refresh} disabled={loading}>
