@@ -15,7 +15,9 @@
   --color-bg: #fbf6ee; /* warm off-white page background, never stark white */
   --color-surface: #ffffff; /* card/panel surfaces, a step up from the page */
   --color-surface-muted: #f3ede1; /* recessed surface, e.g. a subtle stripe */
+  --color-paper: #fdfaf3; /* warm paper tone for the letter-like note card */
   --color-border: #e8dfce; /* soft warm border — never harsh black */
+  --color-overlay: rgba(46, 42, 34, 0.5); /* warm-toned modal backdrop */
 
   --color-text: #3b342a; /* warm near-black body text */
   --color-heading: #2e2a22;
@@ -49,6 +51,9 @@
    * ------------------------------------------------------------------ */
   --font-heading: "Quicksand", "Nunito", system-ui, sans-serif;
   --font-body: "Nunito", "Quicksand", system-ui, sans-serif;
+  /* A warm serif for the drafted note itself — the one place in the app
+     that reads like a real, personal letter rather than app chrome. */
+  --font-note: "Lora", Georgia, serif;
 
   --text-xs: 0.8rem;
   --text-sm: 0.9rem;

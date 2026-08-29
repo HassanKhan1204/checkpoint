@@ -73,6 +73,17 @@ function sortStudents(students) {
   });
 }
 
+// A short, concrete line explaining why a student was flagged — the actual
+// score trend and error tags, not just "declining".
+function flagReason(student) {
+  if (student.status !== "declining" || student.history.length === 0) return null;
+  const latest = student.history[student.history.length - 1];
+  const avg = Math.round(student.averagePreviousScore);
+  const current = Math.round(latest.fluency_score);
+  const tagPhrase = latest.error_tags.length > 0 ? `, with ${latest.error_tags.join(" and ")} errors noted` : "";
+  return `Fluency dropped from an average of ${avg} to ${current} words per minute${tagPhrase}.`;
+}
+
 function StatusBadge({ student }) {
   if (student.status === "declining") {
     return <span className="badge badge-declining">Needs attention</span>;
@@ -135,6 +146,34 @@ function ErrorTags({ tags }) {
   );
 }
 
+function NoteModal({ student, onClose, onCopy, copied }) {
+  const reason = flagReason(student);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="note-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Parent note for ${student.name}`}
+      >
+        <button className="modal-close" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+        <h2 className="modal-student-name">{student.name}</h2>
+        {reason && <p className="flag-reason">{reason}</p>}
+        <div className="letter-card">
+          <p className="letter-text">{student.draft}</p>
+        </div>
+        <button className="note-copy-button" onClick={onCopy}>
+          {copied ? "Copied!" : "Copy note"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [students, setStudents] = useState([]);
   const [decliningList, setDecliningList] = useState([]);
@@ -143,6 +182,7 @@ export default function App() {
   const [error, setError] = useState(null);
   const [pendingId, setPendingId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
 
   async function refresh() {
     setLoading(true);
@@ -170,10 +210,21 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (selectedId === null) return;
+    function handleKeyDown(e) {
+      if (e.key === "Escape") setSelectedId(null);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedId]);
+
   const rows = useMemo(
     () => sortStudents(mergeStudents(students, decliningList, okHistoryById)),
     [students, decliningList, okHistoryById]
   );
+
+  const selectedStudent = rows.find((s) => s.id === selectedId) ?? null;
 
   async function handleLogAssessment(student, formEvent) {
     formEvent.preventDefault();
@@ -226,9 +277,26 @@ export default function App() {
         {rows.map((student) => {
           const latestTags =
             student.history.length > 0 ? student.history[student.history.length - 1].error_tags : [];
+          const hasNote = Boolean(student.draft);
 
           return (
-            <div key={student.id} className={`student-card card-${student.status}`}>
+            <div
+              key={student.id}
+              className={`student-card card-${student.status} ${hasNote ? "card-clickable" : ""}`}
+              onClick={hasNote ? () => setSelectedId(student.id) : undefined}
+              role={hasNote ? "button" : undefined}
+              tabIndex={hasNote ? 0 : undefined}
+              onKeyDown={
+                hasNote
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSelectedId(student.id);
+                      }
+                    }
+                  : undefined
+              }
+            >
               <div className="card-header">
                 <div>
                   <h3 className="card-name">{student.name}</h3>
@@ -242,17 +310,11 @@ export default function App() {
                 {student.status !== "ok" && <ErrorTags tags={latestTags} />}
               </div>
 
-              {student.draft && (
-                <div className="card-draft">
-                  <p className="draft-text">{student.draft}</p>
-                  <button onClick={() => handleCopy(student)}>
-                    {copiedId === student.id ? "Copied!" : "Copy"}
-                  </button>
-                </div>
-              )}
+              {hasNote && <span className="view-note-hint">✉️ Click to view parent note</span>}
 
               <form
                 className="assessment-form"
+                onClick={(e) => e.stopPropagation()}
                 onSubmit={(e) => handleLogAssessment(student, e)}
               >
                 <input
@@ -282,6 +344,15 @@ export default function App() {
         })}
         {rows.length === 0 && !loading && <p>No students yet.</p>}
       </div>
+
+      {selectedStudent && (
+        <NoteModal
+          student={selectedStudent}
+          onClose={() => setSelectedId(null)}
+          onCopy={() => handleCopy(selectedStudent)}
+          copied={copiedId === selectedStudent.id}
+        />
+      )}
     </div>
   );
 }
