@@ -1,0 +1,84 @@
+/*
+ * Design tokens — the shared foundation every screen builds on.
+ *
+ * Direction: warm and human, not a cold enterprise dashboard. This is a
+ * tool a teacher opens to help a real kid, not a corporate analytics
+ * product — the palette, type, and spacing should all feel calm and
+ * supportive rather than clinical.
+ *
+ * This file defines tokens only. It does not style any component —
+ * individual screens consume these variables as the next pass.
+ */
+
+:root {
+  /* ---- Color: base ------------------------------------------------- */
+  --color-bg: #fbf6ee; /* warm off-white page background, never stark white */
+  --color-surface: #ffffff; /* card/panel surfaces, a step up from the page */
+  --color-surface-muted: #f3ede1; /* recessed surface, e.g. a subtle stripe */
+  --color-border: #e8dfce; /* soft warm border — never harsh black */
+
+  --color-text: #3b342a; /* warm near-black body text */
+  --color-heading: #2e2a22;
+  --color-text-muted: #8b8074; /* secondary / caption text */
+
+  --color-accent: #d97b3f; /* warm terracotta — links, focus, primary actions */
+  --color-accent-hover: #c0672e;
+
+  /* ---- Color: status -------------------------------------------------
+   * Three states, each a calm signal rather than a verdict:
+   *   attention — "this needs a look", not "something is wrong"
+   *   ontrack   — a quiet, unemphatic reassurance
+   *   pending   — neutral, not a judgement about the student
+   * ------------------------------------------------------------------ */
+  --color-status-attention-bg: #fbebd3;
+  --color-status-attention-text: #96591a;
+  --color-status-attention-border: #f0cfa0;
+
+  --color-status-ontrack-bg: #e5f0e1;
+  --color-status-ontrack-text: #4c7a3f;
+  --color-status-ontrack-border: #c9dfc1;
+
+  --color-status-pending-bg: #efece6;
+  --color-status-pending-text: #766e62;
+  --color-status-pending-border: #ddd6c9;
+
+  /* ---- Typography -----------------------------------------------------
+   * Quicksand for headings: rounded, geometric, friendly.
+   * Nunito for body text: rounded terminals too, but built for reading
+   * at length — names, scores, notes.
+   * ------------------------------------------------------------------ */
+  --font-heading: "Quicksand", "Nunito", system-ui, sans-serif;
+  --font-body: "Nunito", "Quicksand", system-ui, sans-serif;
+
+  --text-xs: 0.8rem;
+  --text-sm: 0.9rem;
+  --text-base: 1rem;
+  --text-lg: 1.15rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+
+  /* ---- Spacing scale ----------------------------------------------
+   * Generous and consistent — room to breathe rather than a dense grid.
+   * ------------------------------------------------------------------ */
+  --space-1: 0.25rem; /* 4px  */
+  --space-2: 0.5rem; /* 8px  */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.5rem; /* 24px */
+  --space-6: 2rem; /* 32px */
+  --space-7: 3rem; /* 48px */
+
+  /* ---- Radius scale -------------------------------------------------
+   * Soft and rounded throughout — no sharp corners.
+   * ------------------------------------------------------------------ */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  /* ---- Elevation ------------------------------------------------------
+   * Soft, warm-toned shadows for cards — a gentle lift, not a hard drop.
+   * ------------------------------------------------------------------ */
+  --shadow-card: 0 2px 8px rgba(59, 52, 42, 0.06), 0 1px 2px rgba(59, 52, 42, 0.04);
+  --shadow-card-hover: 0 4px 16px rgba(59, 52, 42, 0.09);
+}
