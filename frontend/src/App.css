@@ -92,6 +92,73 @@ input {
   color: var(--color-status-attention-text);
 }
 
+.signed-in-as {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-left: auto;
+}
+
+.logout-button {
+  background: transparent;
+}
+
+/* ---- Auth screen -------------------------------------------------------
+ * Same warm shell as the dashboard (header + tagline), just with a login/
+ * signup card in place of the student list.
+ * ------------------------------------------------------------------ */
+
+.auth-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: var(--space-7);
+}
+
+.auth-screen .app-header {
+  text-align: center;
+}
+
+.auth-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6);
+  max-width: 360px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.auth-title {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  color: var(--color-heading);
+  margin: 0 0 var(--space-2);
+  text-align: center;
+}
+
+.auth-card input {
+  width: 100%;
+}
+
+.auth-card button[type="submit"] {
+  margin-top: var(--space-2);
+}
+
+.auth-switch {
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  align-self: center;
+}
+
+.auth-switch:hover {
+  border-color: transparent;
+  color: var(--color-accent-hover);
+}
+
 /* ---- Card grid ------------------------------------------------------ */
 
 .card-grid {

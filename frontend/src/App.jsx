@@ -5,8 +5,14 @@ import {
   fetchStudentEvents,
   fetchPassages,
   logAssessment,
+  signup,
+  login,
+  fetchMe,
+  setAuthToken,
 } from "./api";
 import "./App.css";
+
+const AUTH_TOKEN_KEY = "checkpoint_token";
 
 const STATUS_RANK = { declining: 0, insufficient_data: 1, ok: 2 };
 
@@ -322,7 +328,6 @@ function ListenModal({ student, onClose, onAssessmentLogged }) {
     try {
       await logAssessment({
         studentId: student.id,
-        teacherId: student.teacher_id,
         fluencyScore: Math.round(result.fluencyScore),
         accuracyPct: Math.round(result.accuracyPct * 10) / 10,
         errorTags: result.errorTags,
@@ -489,7 +494,93 @@ function ListenModal({ student, onClose, onAssessmentLogged }) {
   );
 }
 
+function AuthScreen({ onAuthSuccess }) {
+  const [mode, setMode] = useState("login"); // "login" | "signup"
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const response =
+        mode === "signup" ? await signup({ name, email, password }) : await login({ email, password });
+      onAuthSuccess(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="dashboard auth-screen">
+      <header className="app-header">
+        <h1>Checkpoint</h1>
+        <p className="app-tagline">
+          Checkpoint helps teachers spot reading trends early and reach out to families
+          before a small dip becomes a bigger gap.
+        </p>
+      </header>
+
+      <form className="auth-card" onSubmit={handleSubmit}>
+        <h2 className="auth-title">{mode === "signup" ? "Create your account" : "Welcome back"}</h2>
+
+        {mode === "signup" && (
+          <input
+            type="text"
+            placeholder="Your name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+        )}
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          minLength={8}
+          required
+        />
+
+        {error && <p className="error">{error}</p>}
+
+        <button type="submit" disabled={submitting}>
+          {submitting ? "Please wait..." : mode === "signup" ? "Sign up" : "Log in"}
+        </button>
+
+        <button
+          type="button"
+          className="auth-switch"
+          onClick={() => {
+            setError(null);
+            setMode((m) => (m === "signup" ? "login" : "signup"));
+          }}
+        >
+          {mode === "signup" ? "Already have an account? Log in" : "New here? Create an account"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 export default function App() {
+  const [token, setToken] = useState(() => localStorage.getItem(AUTH_TOKEN_KEY));
+  const [teacher, setTeacher] = useState(null);
+  const [authChecking, setAuthChecking] = useState(true);
+
   const [students, setStudents] = useState([]);
   const [decliningList, setDecliningList] = useState([]);
   const [okHistoryById, setOkHistoryById] = useState(new Map());
@@ -521,10 +612,60 @@ export default function App() {
     }
   }
 
+  // Validate any stored token against the server on load (and whenever it
+  // changes) — a stale or tampered token in localStorage should drop back
+  // to the login screen, not surface as a broken dashboard.
   useEffect(() => {
-    refresh();
+    setAuthToken(token);
+    if (!token) {
+      setTeacher(null);
+      setAuthChecking(false);
+      return;
+    }
+    let cancelled = false;
+    setAuthChecking(true);
+    fetchMe()
+      .then((current) => {
+        if (!cancelled) setTeacher(current);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          localStorage.removeItem(AUTH_TOKEN_KEY);
+          setAuthToken(null);
+          setToken(null);
+          setTeacher(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setAuthChecking(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  useEffect(() => {
+    if (teacher) refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [teacher]);
+
+  function handleAuthSuccess({ access_token, teacher: signedInTeacher }) {
+    localStorage.setItem(AUTH_TOKEN_KEY, access_token);
+    setToken(access_token);
+    setTeacher(signedInTeacher);
+  }
+
+  function handleLogout() {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    setAuthToken(null);
+    setToken(null);
+    setTeacher(null);
+    setStudents([]);
+    setDecliningList([]);
+    setOkHistoryById(new Map());
+    setSelectedId(null);
+    setListenStudentId(null);
+  }
 
   useEffect(() => {
     if (selectedId === null && listenStudentId === null) return;
@@ -562,7 +703,6 @@ export default function App() {
     try {
       await logAssessment({
         studentId: student.id,
-        teacherId: student.teacher_id,
         fluencyScore,
         accuracyPct,
         errorTags,
@@ -582,6 +722,18 @@ export default function App() {
     setTimeout(() => setCopiedId((id) => (id === student.id ? null : id)), 1500);
   }
 
+  if (authChecking) {
+    return (
+      <div className="dashboard auth-screen">
+        <p className="listen-loading">Loading…</p>
+      </div>
+    );
+  }
+
+  if (!teacher) {
+    return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+  }
+
   return (
     <div className="dashboard">
       <header className="app-header">
@@ -595,6 +747,10 @@ export default function App() {
       <div className="controls">
         <button onClick={refresh} disabled={loading}>
           {loading ? "Loading..." : "Refresh"}
+        </button>
+        <span className="signed-in-as">Signed in as {teacher.name}</span>
+        <button type="button" className="logout-button" onClick={handleLogout}>
+          Log out
         </button>
       </div>
 

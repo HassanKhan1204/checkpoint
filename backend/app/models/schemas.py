@@ -20,7 +20,6 @@ class Teacher(TeacherBase):
 
 
 class StudentBase(BaseModel):
-    teacher_id: int
     name: str
     group_name: Optional[str] = None
     contact: Optional[str] = None
@@ -33,6 +32,7 @@ class StudentCreate(StudentBase):
 
 class Student(StudentBase):
     id: int
+    teacher_id: int
     created_at: datetime
 
 
@@ -52,7 +52,6 @@ class Passage(PassageBase):
 
 class EventIn(BaseModel):
     student_id: int
-    teacher_id: int
     fluency_score: float = Field(..., ge=0, description="Words correct per minute")
     accuracy_pct: float = Field(..., ge=0, le=100)
     error_tags: list[str] = Field(default_factory=list, description='e.g. "decoding", "comprehension", "fluency"')
@@ -77,3 +76,20 @@ class DecliningStudent(BaseModel):
 
 class OutreachDraft(DecliningStudent):
     draft: Optional[str] = None
+
+
+class SignupIn(BaseModel):
+    name: str
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+
+
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    teacher: Teacher

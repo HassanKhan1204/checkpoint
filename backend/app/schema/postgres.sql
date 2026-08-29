@@ -5,6 +5,9 @@ CREATE TABLE IF NOT EXISTS teachers (
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     role TEXT,
+    -- Nullable: a teacher created via the old POST /teachers endpoint (or a
+    -- future admin import) has no password and simply can't log in yet.
+    password_hash TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

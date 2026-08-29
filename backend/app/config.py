@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     anthropic_workspace_id: str = ""
 
+    jwt_secret: str = ""
+    jwt_algorithm: str = "HS256"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 

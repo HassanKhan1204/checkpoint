@@ -1,24 +1,31 @@
 import json
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.db.clickhouse import get_clickhouse_client
 from app.db.postgres import get_pool
-from app.models.schemas import EventIn
+from app.dependencies import get_current_teacher
+from app.models.schemas import EventIn, Teacher
 
 router = APIRouter(prefix="/events", tags=["events"])
 
 EVENT_TYPE = "reading_assessment"
 
 
-@router.post("", status_code=201)
-async def create_event(payload: EventIn) -> dict[str, str]:
+async def _require_own_student(student_id: int, teacher_id: int) -> None:
     pool = await get_pool()
-    student_exists = await pool.fetchval(
-        "SELECT 1 FROM students WHERE id = $1", payload.student_id
-    )
-    if not student_exists:
+    owner_id = await pool.fetchval("SELECT teacher_id FROM students WHERE id = $1", student_id)
+    # 404 either way — a teacher probing another teacher's student id
+    # shouldn't be able to tell it exists from the response.
+    if owner_id is None or owner_id != teacher_id:
         raise HTTPException(status_code=404, detail="Student not found")
+
+
+@router.post("", status_code=201)
+async def create_event(
+    payload: EventIn, current_teacher: Teacher = Depends(get_current_teacher)
+) -> dict[str, str]:
+    await _require_own_student(payload.student_id, current_teacher.id)
 
     metadata = json.dumps(
         {"accuracy_pct": payload.accuracy_pct, "error_tags": payload.error_tags}
@@ -27,14 +34,18 @@ async def create_event(payload: EventIn) -> dict[str, str]:
     client = get_clickhouse_client()
     client.insert(
         "events",
-        [[EVENT_TYPE, payload.student_id, payload.teacher_id, payload.fluency_score, metadata]],
+        [[EVENT_TYPE, payload.student_id, current_teacher.id, payload.fluency_score, metadata]],
         column_names=["event_type", "student_id", "teacher_id", "value", "metadata"],
     )
     return {"status": "recorded"}
 
 
 @router.get("/students/{student_id}")
-async def list_student_events(student_id: int) -> list[dict]:
+async def list_student_events(
+    student_id: int, current_teacher: Teacher = Depends(get_current_teacher)
+) -> list[dict]:
+    await _require_own_student(student_id, current_teacher.id)
+
     client = get_clickhouse_client()
     result = client.query(
         """

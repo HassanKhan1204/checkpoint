@@ -1,14 +1,14 @@
 import asyncio
 import json
 from datetime import timezone
-from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.config import settings
 from app.db.clickhouse import get_clickhouse_client
 from app.db.postgres import get_pool
-from app.models.schemas import AssessmentPoint, DecliningStudent, OutreachDraft
+from app.dependencies import get_current_teacher
+from app.models.schemas import AssessmentPoint, DecliningStudent, OutreachDraft, Teacher
 from app.services.outreach import draft_outreach_note
 
 router = APIRouter(prefix="/insights", tags=["insights"])
@@ -24,17 +24,12 @@ def _sort_key(student: DecliningStudent) -> tuple[int, float]:
     return (0, -drop)
 
 
-async def _get_declining_students(teacher_id: Optional[int]) -> list[DecliningStudent]:
+async def _get_declining_students(teacher_id: int) -> list[DecliningStudent]:
     pool = await get_pool()
-    if teacher_id is not None:
-        student_rows = await pool.fetch(
-            "SELECT id, name, teacher_id, group_name FROM students WHERE teacher_id = $1 ORDER BY id",
-            teacher_id,
-        )
-    else:
-        student_rows = await pool.fetch(
-            "SELECT id, name, teacher_id, group_name FROM students ORDER BY id"
-        )
+    student_rows = await pool.fetch(
+        "SELECT id, name, teacher_id, group_name FROM students WHERE teacher_id = $1 ORDER BY id",
+        teacher_id,
+    )
     students_by_id = {row["id"]: row for row in student_rows}
 
     client = get_clickhouse_client()
@@ -106,16 +101,16 @@ async def _get_declining_students(teacher_id: Optional[int]) -> list[DecliningSt
 
 @router.get("/declining-students", response_model=list[DecliningStudent])
 async def declining_students(
-    teacher_id: Optional[int] = Query(default=None),
+    current_teacher: Teacher = Depends(get_current_teacher),
 ) -> list[DecliningStudent]:
-    return await _get_declining_students(teacher_id)
+    return await _get_declining_students(current_teacher.id)
 
 
 @router.get("/declining-students/drafts", response_model=list[OutreachDraft])
 async def declining_students_drafts(
-    teacher_id: Optional[int] = Query(default=None),
+    current_teacher: Teacher = Depends(get_current_teacher),
 ) -> list[OutreachDraft]:
-    students = await _get_declining_students(teacher_id)
+    students = await _get_declining_students(current_teacher.id)
     to_draft = [s for s in students if s.status == "declining"]
 
     if to_draft:
