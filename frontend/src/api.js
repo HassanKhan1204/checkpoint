@@ -17,14 +17,16 @@ export function fetchQuietStudentDrafts(days) {
   return request(`/insights/quiet-students/drafts?days=${days}`);
 }
 
-export function logCheckIn({ studentId, teacherId }) {
+export function logAssessment({ studentId, teacherId, fluencyScore, accuracyPct, errorTags }) {
   return request("/events", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      event_type: "check_in",
       student_id: studentId,
       teacher_id: teacherId,
+      fluency_score: fluencyScore,
+      accuracy_pct: accuracyPct,
+      error_tags: errorTags,
     }),
   });
 }

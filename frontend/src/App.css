@@ -1,5 +1,5 @@
 .dashboard {
-  max-width: 960px;
+  max-width: 1140px;
   margin: 2rem auto;
   padding: 0 1rem;
   font-family: system-ui, sans-serif;
@@ -67,4 +67,20 @@ td {
 
 .draft-empty {
   color: #999;
+}
+
+.assessment-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.assessment-form input[name="fluencyScore"],
+.assessment-form input[name="accuracyPct"] {
+  width: 4.5rem;
+}
+
+.assessment-form input[name="errorTags"] {
+  width: 9rem;
 }

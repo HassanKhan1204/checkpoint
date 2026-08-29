@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class TeacherBase(BaseModel):
@@ -37,11 +37,11 @@ class Student(StudentBase):
 
 
 class EventIn(BaseModel):
-    event_type: str
     student_id: int
     teacher_id: int
-    value: Optional[float] = None
-    metadata: Optional[str] = None
+    fluency_score: float = Field(..., ge=0, description="Words correct per minute")
+    accuracy_pct: float = Field(..., ge=0, le=100)
+    error_tags: list[str] = Field(default_factory=list, description='e.g. "decoding", "comprehension", "fluency"')
 
 
 class QuietStudent(BaseModel):

@@ -36,7 +36,7 @@ async def _get_quiet_students(days: int, teacher_id: Optional[int]) -> list[Quie
         """
         SELECT student_id, max(event_time) AS last_check_in
         FROM events
-        WHERE event_type = 'check_in'
+        WHERE event_type = 'reading_assessment'
         GROUP BY student_id
         """
     )

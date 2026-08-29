@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchStudents, fetchQuietStudentDrafts, logCheckIn } from "./api";
+import { fetchStudents, fetchQuietStudentDrafts, logAssessment } from "./api";
 import "./App.css";
 
 const DEFAULT_DAYS = 14;
@@ -80,11 +80,27 @@ export default function App() {
     [students, quietStudents]
   );
 
-  async function handleCheckIn(student) {
+  async function handleLogAssessment(student, formEvent) {
+    formEvent.preventDefault();
+    const form = formEvent.target;
+    const fluencyScore = Number(form.fluencyScore.value);
+    const accuracyPct = Number(form.accuracyPct.value);
+    const errorTags = form.errorTags.value
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
     setPendingId(student.id);
     setError(null);
     try {
-      await logCheckIn({ studentId: student.id, teacherId: student.teacher_id });
+      await logAssessment({
+        studentId: student.id,
+        teacherId: student.teacher_id,
+        fluencyScore,
+        accuracyPct,
+        errorTags,
+      });
+      form.reset();
       await refresh();
     } catch (err) {
       setError(err.message);
@@ -127,7 +143,7 @@ export default function App() {
             <th>Group</th>
             <th>Status</th>
             <th>Outreach draft</th>
-            <th></th>
+            <th>Log assessment</th>
           </tr>
         </thead>
         <tbody>
@@ -151,12 +167,32 @@ export default function App() {
                 )}
               </td>
               <td>
-                <button
-                  onClick={() => handleCheckIn(student)}
-                  disabled={pendingId === student.id}
+                <form
+                  className="assessment-form"
+                  onSubmit={(e) => handleLogAssessment(student, e)}
                 >
-                  {pendingId === student.id ? "Logging..." : "Log check-in"}
-                </button>
+                  <input
+                    name="fluencyScore"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="WCPM"
+                    required
+                  />
+                  <input
+                    name="accuracyPct"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    placeholder="Acc %"
+                    required
+                  />
+                  <input name="errorTags" type="text" placeholder="tags, comma-sep" />
+                  <button type="submit" disabled={pendingId === student.id}>
+                    {pendingId === student.id ? "Logging..." : "Log"}
+                  </button>
+                </form>
               </td>
             </tr>
           ))}

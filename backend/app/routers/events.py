@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, HTTPException
 
 from app.db.clickhouse import get_clickhouse_client
@@ -5,6 +7,8 @@ from app.db.postgres import get_pool
 from app.models.schemas import EventIn
 
 router = APIRouter(prefix="/events", tags=["events"])
+
+EVENT_TYPE = "reading_assessment"
 
 
 @router.post("", status_code=201)
@@ -16,10 +20,14 @@ async def create_event(payload: EventIn) -> dict[str, str]:
     if not student_exists:
         raise HTTPException(status_code=404, detail="Student not found")
 
+    metadata = json.dumps(
+        {"accuracy_pct": payload.accuracy_pct, "error_tags": payload.error_tags}
+    )
+
     client = get_clickhouse_client()
     client.insert(
         "events",
-        [[payload.event_type, payload.student_id, payload.teacher_id, payload.value, payload.metadata or ""]],
+        [[EVENT_TYPE, payload.student_id, payload.teacher_id, payload.fluency_score, metadata]],
         column_names=["event_type", "student_id", "teacher_id", "value", "metadata"],
     )
     return {"status": "recorded"}
