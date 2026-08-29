@@ -479,3 +479,13 @@ input {
   color: var(--color-text-muted);
   margin: 0;
 }
+
+.score-result {
+  background: var(--color-status-ontrack-bg);
+  color: var(--color-status-ontrack-text);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  margin: var(--space-4) 0 0;
+}

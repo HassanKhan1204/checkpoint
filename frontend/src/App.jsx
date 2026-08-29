@@ -16,6 +16,51 @@ const STATUS_RANK = { declining: 0, insufficient_data: 1, ok: 2 };
 const SpeechRecognitionAPI =
   typeof window !== "undefined" ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
 
+// Below this accuracy, tag the assessment "unclear" — roughly the standard
+// oral-reading-fluency "frustration level" cutoff. We don't have enough
+// signal here to tell decoding errors from comprehension errors, so we
+// don't try.
+const LOW_ACCURACY_THRESHOLD = 90;
+
+function normalizeWords(text) {
+  return text
+    .toLowerCase()
+    .replace(/[.,!?;:"'()]/g, "")
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+// Longest common subsequence length between the reference passage and the
+// transcript — words matched in the same relative order count as "correct",
+// which tolerates the student skipping, inserting, or misreading the odd
+// word without cascading every later word into a mismatch.
+function countWordsCorrect(referenceWords, transcriptWords) {
+  const n = referenceWords.length;
+  const m = transcriptWords.length;
+  const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      dp[i][j] =
+        referenceWords[i - 1] === transcriptWords[j - 1]
+          ? dp[i - 1][j - 1] + 1
+          : Math.max(dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  return dp[n][m];
+}
+
+function scoreReading(passageText, transcriptText, elapsedSeconds) {
+  const referenceWords = normalizeWords(passageText);
+  const transcriptWords = normalizeWords(transcriptText);
+  const totalWords = referenceWords.length;
+  const wordsCorrect = totalWords === 0 ? 0 : countWordsCorrect(referenceWords, transcriptWords);
+  const accuracyPct = totalWords === 0 ? 0 : (wordsCorrect / totalWords) * 100;
+  const minutes = Math.max(elapsedSeconds, 1) / 60; // guard against a near-instant stop
+  const fluencyScore = wordsCorrect / minutes;
+  const errorTags = accuracyPct < LOW_ACCURACY_THRESHOLD ? ["unclear"] : [];
+  return { wordsCorrect, totalWords, accuracyPct, fluencyScore, errorTags };
+}
+
 const SPARKLINE_COLOR = {
   declining: "var(--color-status-attention-text)",
   insufficient_data: "var(--color-status-pending-text)",
@@ -206,7 +251,7 @@ function formatElapsed(totalSeconds) {
   return `${minutes}:${seconds}`;
 }
 
-function ListenModal({ student, onClose }) {
+function ListenModal({ student, onClose, onAssessmentLogged }) {
   const [passage, setPassage] = useState(null);
   const [passageIsFallback, setPassageIsFallback] = useState(false);
   const [passageError, setPassageError] = useState(null);
@@ -215,10 +260,18 @@ function ListenModal({ student, onClose }) {
   const [interimText, setInterimText] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [speechError, setSpeechError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+  const [scoreResult, setScoreResult] = useState(null);
 
   const recognitionRef = useRef(null);
   const timerRef = useRef(null);
   const keepListeningRef = useRef(false);
+  // onend fires asynchronously, after this render's closures were created —
+  // reading transcript/elapsedSeconds state directly there would see stale
+  // values from whenever startRecording ran. Refs give the current value.
+  const transcriptRef = useRef("");
+  const elapsedRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -254,11 +307,43 @@ function ListenModal({ student, onClose }) {
     };
   }, []);
 
+  async function finalizeRecording() {
+    const finalTranscript = transcriptRef.current.trim();
+    const seconds = elapsedRef.current;
+
+    if (!finalTranscript) {
+      return; // nothing was said — nothing to score or log
+    }
+
+    const result = scoreReading(passage.text, finalTranscript, seconds);
+    setScoreResult(result);
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await logAssessment({
+        studentId: student.id,
+        teacherId: student.teacher_id,
+        fluencyScore: Math.round(result.fluencyScore),
+        accuracyPct: Math.round(result.accuracyPct * 10) / 10,
+        errorTags: result.errorTags,
+      });
+      onAssessmentLogged?.();
+    } catch (err) {
+      setSubmitError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   function startRecording() {
     setSpeechError(null);
+    setSubmitError(null);
+    setScoreResult(null);
     setTranscript("");
     setInterimText("");
     setElapsedSeconds(0);
+    transcriptRef.current = "";
+    elapsedRef.current = 0;
 
     const recognition = new SpeechRecognitionAPI();
     recognition.continuous = true;
@@ -277,7 +362,11 @@ function ListenModal({ student, onClose }) {
         }
       }
       if (finalChunk) {
-        setTranscript((prev) => (prev ? `${prev} ${finalChunk}`.trim() : finalChunk.trim()));
+        setTranscript((prev) => {
+          const next = prev ? `${prev} ${finalChunk}`.trim() : finalChunk.trim();
+          transcriptRef.current = next;
+          return next;
+        });
       }
       setInterimText(interimChunk);
     };
@@ -289,9 +378,14 @@ function ListenModal({ student, onClose }) {
 
     recognition.onend = () => {
       // Chrome ends the session on silence even with continuous: true —
-      // restart it transparently as long as we're still "recording".
+      // restart it transparently as long as the user hasn't pressed Stop.
+      // Once they have, this is the reliable point to score and submit:
+      // stop() is async, so scoring immediately inside stopRecording()
+      // could miss whatever result event was still in flight.
       if (keepListeningRef.current) {
         recognition.start();
+      } else {
+        finalizeRecording();
       }
     };
 
@@ -301,15 +395,19 @@ function ListenModal({ student, onClose }) {
     setIsRecording(true);
 
     timerRef.current = setInterval(() => {
-      setElapsedSeconds((s) => s + 1);
+      setElapsedSeconds((s) => {
+        const next = s + 1;
+        elapsedRef.current = next;
+        return next;
+      });
     }, 1000);
   }
 
   function stopRecording() {
     keepListeningRef.current = false;
-    recognitionRef.current?.stop();
     clearInterval(timerRef.current);
     setIsRecording(false);
+    recognitionRef.current?.stop();
   }
 
   return (
@@ -370,6 +468,16 @@ function ListenModal({ student, onClose }) {
             <p className="transcript-empty">The transcript will appear here as the student reads.</p>
           )}
         </div>
+
+        {submitting && <p className="listen-loading">Scoring and logging the assessment...</p>}
+        {submitError && <p className="error">Couldn't log the assessment: {submitError}</p>}
+        {scoreResult && !submitting && !submitError && (
+          <p className="score-result">
+            Logged: {Math.round(scoreResult.fluencyScore)} WCPM · {scoreResult.accuracyPct.toFixed(1)}% accuracy (
+            {scoreResult.wordsCorrect} of {scoreResult.totalWords} words)
+            {scoreResult.errorTags.includes("unclear") && " — tagged unclear"}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -579,7 +687,11 @@ export default function App() {
       )}
 
       {listenStudent && (
-        <ListenModal student={listenStudent} onClose={() => setListenStudentId(null)} />
+        <ListenModal
+          student={listenStudent}
+          onClose={() => setListenStudentId(null)}
+          onAssessmentLogged={refresh}
+        />
       )}
     </div>
   );
