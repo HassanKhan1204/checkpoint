@@ -4,8 +4,48 @@
   padding: 0 var(--space-4);
 }
 
+/* The header, tagline, and controls form one visually distinct band,
+ * set off from the roster below by a soft border rather than just
+ * whitespace — with a small accent flourish instead of a flat, sterile
+ * rule. */
+.page-header {
+  position: relative;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.page-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 64px;
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+}
+
 .app-header {
   margin-bottom: var(--space-5);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  flex-shrink: 0;
 }
 
 .dashboard h1 {
@@ -116,6 +156,10 @@ input {
 
 .auth-screen .app-header {
   text-align: center;
+}
+
+.auth-screen .brand {
+  justify-content: center;
 }
 
 .auth-card {

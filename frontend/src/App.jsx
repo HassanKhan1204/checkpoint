@@ -174,6 +174,21 @@ function buildMailtoHref(student) {
   return `mailto:${to}?subject=${subject}&body=${body}`;
 }
 
+// The open-book mark from public/favicon.svg, inlined so it can pick up
+// currentColor and sit in the header at whatever size fits.
+function BrandMark() {
+  return (
+    <span className="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 32 32" width="24" height="24">
+        <path
+          d="M16 11.5c-2.4-1.8-5.4-2.7-8-2.7-.7 0-1.2.6-1.2 1.2v11.2c0 .7.5 1.2 1.2 1.2 2.6 0 5.6.9 8 2.7 2.4-1.8 5.4-2.7 8-2.7.7 0 1.2-.5 1.2-1.2V10c0-.7-.5-1.2-1.2-1.2-2.6 0-5.6.9-8 2.7z"
+          fill="currentColor"
+        />
+      </svg>
+    </span>
+  );
+}
+
 function StatusBadge({ student }) {
   if (student.status === "declining") {
     return <span className="badge badge-declining">Needs attention</span>;
@@ -542,7 +557,10 @@ function AuthScreen({ onAuthSuccess }) {
   return (
     <div className="dashboard auth-screen">
       <header className="app-header">
-        <h1>Checkpoint</h1>
+        <div className="brand">
+          <BrandMark />
+          <h1>Checkpoint</h1>
+        </div>
         <p className="app-tagline">
           Checkpoint helps teachers spot reading trends early and reach out to families
           before a small dip becomes a bigger gap.
@@ -868,28 +886,33 @@ export default function App() {
 
   return (
     <div className="dashboard">
-      <header className="app-header">
-        <h1>Checkpoint</h1>
-        <p className="app-tagline">
-          Checkpoint helps teachers spot reading trends early and reach out to families
-          before a small dip becomes a bigger gap.
-        </p>
-      </header>
+      <div className="page-header">
+        <header className="app-header">
+          <div className="brand">
+            <BrandMark />
+            <h1>Checkpoint</h1>
+          </div>
+          <p className="app-tagline">
+            Checkpoint helps teachers spot reading trends early and reach out to families
+            before a small dip becomes a bigger gap.
+          </p>
+        </header>
 
-      <div className="controls">
-        <button onClick={refresh} disabled={loading}>
-          {loading ? "Loading..." : "Refresh"}
-        </button>
-        <button type="button" onClick={() => setStudentModal({ mode: "add" })}>
-          + Add student
-        </button>
-        <span className="signed-in-as">Signed in as {teacher.name}</span>
-        <button type="button" className="logout-button" onClick={handleLogout}>
-          Log out
-        </button>
+        <div className="controls">
+          <button onClick={refresh} disabled={loading}>
+            {loading ? "Loading..." : "Refresh"}
+          </button>
+          <button type="button" onClick={() => setStudentModal({ mode: "add" })}>
+            + Add student
+          </button>
+          <span className="signed-in-as">Signed in as {teacher.name}</span>
+          <button type="button" className="logout-button" onClick={handleLogout}>
+            Log out
+          </button>
+        </div>
+
+        {error && <p className="error">{error}</p>}
       </div>
-
-      {error && <p className="error">{error}</p>}
 
       {rows.length > 0 && (
         <div className="class-summary">
