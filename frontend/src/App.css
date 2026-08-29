@@ -12,11 +12,6 @@
   margin-bottom: 1rem;
 }
 
-.controls input {
-  width: 4rem;
-  margin-left: 0.5rem;
-}
-
 table {
   width: 100%;
   border-collapse: collapse;
@@ -29,8 +24,12 @@ td {
   border-bottom: 1px solid #ddd;
 }
 
-.row-quiet {
+.row-declining {
   background: #fff4f4;
+}
+
+.row-insufficient_data {
+  background: #fffaf0;
 }
 
 .badge {
@@ -45,9 +44,14 @@ td {
   color: #1a7f37;
 }
 
-.badge-quiet {
+.badge-declining {
   background: #fde2e2;
   color: #c0342c;
+}
+
+.badge-pending {
+  background: #fdf1d6;
+  color: #96690a;
 }
 
 .error {
@@ -67,6 +71,16 @@ td {
 
 .draft-empty {
   color: #999;
+}
+
+.history-text {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.history-unit {
+  color: #888;
+  font-size: 0.8rem;
 }
 
 .assessment-form {

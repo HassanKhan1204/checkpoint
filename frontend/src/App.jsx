@@ -1,68 +1,75 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchStudents, fetchQuietStudentDrafts, logAssessment } from "./api";
+import { fetchStudents, fetchDecliningStudentDrafts, logAssessment } from "./api";
 import "./App.css";
 
-const DEFAULT_DAYS = 14;
+const STATUS_RANK = { declining: 0, insufficient_data: 1, ok: 2 };
 
-function mergeStudents(students, quietStudents) {
-  const quietById = new Map(quietStudents.map((q) => [q.student_id, q]));
+function mergeStudents(students, decliningList) {
+  const infoById = new Map(decliningList.map((d, index) => [d.student_id, { ...d, apiOrder: index }]));
 
   return students.map((student) => {
-    const quiet = quietById.get(student.id);
+    const info = infoById.get(student.id);
     return {
       ...student,
-      isQuiet: Boolean(quiet),
-      daysSinceCheckIn: quiet ? quiet.days_since_check_in : null,
-      draft: quiet ? quiet.draft : null,
+      status: info ? info.status : "ok",
+      history: info ? info.history : [],
+      averagePreviousScore: info ? info.average_previous_score : null,
+      draft: info ? info.draft : null,
+      apiOrder: info ? info.apiOrder : Infinity,
     };
   });
 }
 
 function sortStudents(students) {
   return [...students].sort((a, b) => {
-    if (a.isQuiet !== b.isQuiet) return a.isQuiet ? -1 : 1;
-    if (a.isQuiet && b.isQuiet) {
-      if (a.daysSinceCheckIn === null) return -1;
-      if (b.daysSinceCheckIn === null) return 1;
-      return b.daysSinceCheckIn - a.daysSinceCheckIn;
+    if (STATUS_RANK[a.status] !== STATUS_RANK[b.status]) {
+      return STATUS_RANK[a.status] - STATUS_RANK[b.status];
     }
+    if (a.apiOrder !== b.apiOrder) return a.apiOrder - b.apiOrder;
     return a.name.localeCompare(b.name);
   });
 }
 
 function StatusBadge({ student }) {
-  if (!student.isQuiet) {
-    return <span className="badge badge-ok">OK</span>;
+  if (student.status === "declining") {
+    return <span className="badge badge-declining">Declining</span>;
   }
-  if (student.daysSinceCheckIn === null) {
-    return <span className="badge badge-quiet">Never checked in</span>;
+  if (student.status === "insufficient_data") {
+    return <span className="badge badge-pending">Not enough data</span>;
   }
+  return <span className="badge badge-ok">OK</span>;
+}
+
+function HistoryCell({ student }) {
+  if (student.history.length === 0) {
+    return <span className="draft-empty">—</span>;
+  }
+  const scores = student.history.map((point) => Math.round(point.fluency_score)).join(" → ");
   return (
-    <span className="badge badge-quiet">
-      Quiet &mdash; {student.daysSinceCheckIn}d ago
+    <span className="history-text">
+      {scores} <span className="history-unit">WCPM</span>
     </span>
   );
 }
 
 export default function App() {
   const [students, setStudents] = useState([]);
-  const [quietStudents, setQuietStudents] = useState([]);
-  const [days, setDays] = useState(DEFAULT_DAYS);
+  const [decliningList, setDecliningList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pendingId, setPendingId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
 
-  async function refresh(threshold = days) {
+  async function refresh() {
     setLoading(true);
     setError(null);
     try {
-      const [studentList, quietList] = await Promise.all([
+      const [studentList, declining] = await Promise.all([
         fetchStudents(),
-        fetchQuietStudentDrafts(threshold),
+        fetchDecliningStudentDrafts(),
       ]);
       setStudents(studentList);
-      setQuietStudents(quietList);
+      setDecliningList(declining);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -71,13 +78,13 @@ export default function App() {
   }
 
   useEffect(() => {
-    refresh(DEFAULT_DAYS);
+    refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const rows = useMemo(
-    () => sortStudents(mergeStudents(students, quietStudents)),
-    [students, quietStudents]
+    () => sortStudents(mergeStudents(students, decliningList)),
+    [students, decliningList]
   );
 
   async function handleLogAssessment(student, formEvent) {
@@ -120,16 +127,7 @@ export default function App() {
       <h1>Checkpoint</h1>
 
       <div className="controls">
-        <label>
-          Quiet threshold (days):{" "}
-          <input
-            type="number"
-            min="1"
-            value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
-          />
-        </label>
-        <button onClick={() => refresh(days)} disabled={loading}>
+        <button onClick={refresh} disabled={loading}>
           {loading ? "Loading..." : "Refresh"}
         </button>
       </div>
@@ -142,20 +140,24 @@ export default function App() {
             <th>Name</th>
             <th>Group</th>
             <th>Status</th>
-            <th>Outreach draft</th>
+            <th>Fluency history</th>
+            <th>Parent note draft</th>
             <th>Log assessment</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((student) => (
-            <tr key={student.id} className={student.isQuiet ? "row-quiet" : ""}>
+            <tr key={student.id} className={`row-${student.status}`}>
               <td>{student.name}</td>
               <td>{student.group_name ?? "—"}</td>
               <td>
                 <StatusBadge student={student} />
               </td>
+              <td>
+                <HistoryCell student={student} />
+              </td>
               <td className="draft-cell">
-                {student.isQuiet && student.draft ? (
+                {student.draft ? (
                   <>
                     <span className="draft-text">{student.draft}</span>
                     <button onClick={() => handleCopy(student)}>
@@ -198,7 +200,7 @@ export default function App() {
           ))}
           {rows.length === 0 && !loading && (
             <tr>
-              <td colSpan={5}>No students yet.</td>
+              <td colSpan={6}>No students yet.</td>
             </tr>
           )}
         </tbody>

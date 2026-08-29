@@ -13,8 +13,8 @@ export function fetchStudents() {
   return request("/students");
 }
 
-export function fetchQuietStudentDrafts(days) {
-  return request(`/insights/quiet-students/drafts?days=${days}`);
+export function fetchDecliningStudentDrafts() {
+  return request("/insights/declining-students/drafts");
 }
 
 export function logAssessment({ studentId, teacherId, fluencyScore, accuracyPct, errorTags }) {

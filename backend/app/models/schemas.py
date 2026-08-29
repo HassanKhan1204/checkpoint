@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -44,14 +44,22 @@ class EventIn(BaseModel):
     error_tags: list[str] = Field(default_factory=list, description='e.g. "decoding", "comprehension", "fluency"')
 
 
-class QuietStudent(BaseModel):
+class AssessmentPoint(BaseModel):
+    event_time: datetime
+    fluency_score: float
+    accuracy_pct: float
+    error_tags: list[str]
+
+
+class DecliningStudent(BaseModel):
     student_id: int
     name: str
     teacher_id: int
     group_name: Optional[str] = None
-    last_check_in: Optional[datetime] = None
-    days_since_check_in: Optional[int] = None
+    status: Literal["declining", "insufficient_data"]
+    history: list[AssessmentPoint]
+    average_previous_score: Optional[float] = None
 
 
-class OutreachDraft(QuietStudent):
-    draft: str
+class OutreachDraft(DecliningStudent):
+    draft: Optional[str] = None
