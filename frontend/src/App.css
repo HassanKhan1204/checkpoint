@@ -226,6 +226,64 @@ input {
   color: var(--color-text-muted);
 }
 
+.card-header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.card-icon-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.icon-button {
+  padding: var(--space-1);
+  min-width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  border-color: transparent;
+  background: transparent;
+  font-size: var(--text-sm);
+  line-height: 1;
+}
+
+.icon-button:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--color-surface-muted);
+}
+
+/* ---- Remove-student confirmation — a deliberate second step, not one
+ * accidental click away. ------------------------------------------------ */
+
+.remove-confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  background: var(--color-status-attention-bg);
+  color: var(--color-status-attention-text);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.remove-confirm-yes {
+  background: var(--color-status-attention-text);
+  border-color: var(--color-status-attention-text);
+  color: var(--color-surface);
+}
+
+.remove-confirm-yes:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
 .card-body {
   display: flex;
   align-items: center;
@@ -427,6 +485,44 @@ input {
 .assessment-form input[name="errorTags"] {
   flex: 1;
   min-width: 8rem;
+}
+
+/* ---- Add/Edit student modal -------------------------------------------- */
+
+.student-form-modal {
+  position: relative;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card-hover);
+  padding: var(--space-6);
+  max-width: 400px;
+  width: 100%;
+}
+
+.student-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.form-field input {
+  width: 100%;
+  font-weight: 400;
+  color: var(--color-text);
+}
+
+.student-form button[type="submit"] {
+  margin-top: var(--space-2);
 }
 
 /* ---- Listen modal — passage + live transcript -------------------------- */

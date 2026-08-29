@@ -9,6 +9,9 @@ import {
   login,
   fetchMe,
   setAuthToken,
+  createStudent,
+  updateStudent,
+  deleteStudent,
 } from "./api";
 import "./App.css";
 
@@ -576,6 +579,90 @@ function AuthScreen({ onAuthSuccess }) {
   );
 }
 
+function StudentFormModal({ student, onClose, onSaved }) {
+  const isEdit = Boolean(student);
+  const [name, setName] = useState(student?.name ?? "");
+  const [groupName, setGroupName] = useState(student?.group_name ?? "");
+  const [parentEmail, setParentEmail] = useState(student?.parent_email ?? "");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      if (isEdit) {
+        await updateStudent(student.id, {
+          name,
+          groupName: groupName || null,
+          parentEmail: parentEmail || null,
+          // Not exposed in this trimmed form — carry the existing values
+          // through so a PUT (which replaces the whole record) doesn't
+          // silently clear them.
+          contact: student.contact ?? null,
+          notes: student.notes ?? null,
+        });
+      } else {
+        await createStudent({ name, groupName: groupName || null, parentEmail: parentEmail || null });
+      }
+      onSaved();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="student-form-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={isEdit ? `Edit ${student.name}` : "Add a student"}
+      >
+        <button className="modal-close" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+        <h2 className="modal-student-name">{isEdit ? `Edit ${student.name}` : "Add a student"}</h2>
+
+        <form className="student-form" onSubmit={handleSubmit}>
+          <label className="form-field">
+            <span>Name</span>
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+          </label>
+          <label className="form-field">
+            <span>Group / grade</span>
+            <input
+              type="text"
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              placeholder="e.g. 3rd grade"
+            />
+          </label>
+          <label className="form-field">
+            <span>Parent email</span>
+            <input
+              type="email"
+              value={parentEmail}
+              onChange={(e) => setParentEmail(e.target.value)}
+              placeholder="parent@example.com"
+            />
+          </label>
+
+          {error && <p className="error">{error}</p>}
+
+          <button type="submit" disabled={submitting}>
+            {submitting ? "Saving..." : isEdit ? "Save changes" : "Add student"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem(AUTH_TOKEN_KEY));
   const [teacher, setTeacher] = useState(null);
@@ -590,6 +677,9 @@ export default function App() {
   const [copiedId, setCopiedId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [listenStudentId, setListenStudentId] = useState(null);
+  const [studentModal, setStudentModal] = useState(null); // null | { mode: "add" } | { mode: "edit", student }
+  const [removeConfirmId, setRemoveConfirmId] = useState(null);
+  const [removingId, setRemovingId] = useState(null);
 
   async function refresh() {
     setLoading(true);
@@ -668,16 +758,20 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (selectedId === null && listenStudentId === null) return;
+    if (selectedId === null && listenStudentId === null && studentModal === null && removeConfirmId === null) {
+      return;
+    }
     function handleKeyDown(e) {
       if (e.key === "Escape") {
         setSelectedId(null);
         setListenStudentId(null);
+        setStudentModal(null);
+        setRemoveConfirmId(null);
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedId, listenStudentId]);
+  }, [selectedId, listenStudentId, studentModal, removeConfirmId]);
 
   const rows = useMemo(
     () => sortStudents(mergeStudents(students, decliningList, okHistoryById)),
@@ -722,6 +816,25 @@ export default function App() {
     setTimeout(() => setCopiedId((id) => (id === student.id ? null : id)), 1500);
   }
 
+  async function handleStudentSaved() {
+    setStudentModal(null);
+    await refresh();
+  }
+
+  async function handleRemoveConfirmed(student) {
+    setRemovingId(student.id);
+    setError(null);
+    try {
+      await deleteStudent(student.id);
+      setRemoveConfirmId(null);
+      await refresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRemovingId(null);
+    }
+  }
+
   if (authChecking) {
     return (
       <div className="dashboard auth-screen">
@@ -747,6 +860,9 @@ export default function App() {
       <div className="controls">
         <button onClick={refresh} disabled={loading}>
           {loading ? "Loading..." : "Refresh"}
+        </button>
+        <button type="button" onClick={() => setStudentModal({ mode: "add" })}>
+          + Add student
         </button>
         <span className="signed-in-as">Signed in as {teacher.name}</span>
         <button type="button" className="logout-button" onClick={handleLogout}>
@@ -792,8 +908,51 @@ export default function App() {
                   <h3 className="card-name">{student.name}</h3>
                   <span className="card-group">{student.group_name ?? "—"}</span>
                 </div>
-                <StatusBadge student={student} />
+                <div className="card-header-actions">
+                  <StatusBadge student={student} />
+                  <div className="card-icon-actions">
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={`Edit ${student.name}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setStudentModal({ mode: "edit", student });
+                      }}
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={`Remove ${student.name}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRemoveConfirmId(student.id);
+                      }}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
               </div>
+
+              {removeConfirmId === student.id && (
+                <div className="remove-confirm" onClick={(e) => e.stopPropagation()}>
+                  <span>Remove {student.name}?</span>
+                  <button
+                    type="button"
+                    className="remove-confirm-yes"
+                    onClick={() => handleRemoveConfirmed(student)}
+                    disabled={removingId === student.id}
+                  >
+                    {removingId === student.id ? "Removing..." : "Yes, remove"}
+                  </button>
+                  <button type="button" onClick={() => setRemoveConfirmId(null)}>
+                    Cancel
+                  </button>
+                </div>
+              )}
 
               <div className="card-body">
                 <Sparkline history={student.history} status={student.status} />
@@ -859,6 +1018,14 @@ export default function App() {
           student={listenStudent}
           onClose={() => setListenStudentId(null)}
           onAssessmentLogged={refresh}
+        />
+      )}
+
+      {studentModal && (
+        <StudentFormModal
+          student={studentModal.mode === "edit" ? studentModal.student : null}
+          onClose={() => setStudentModal(null)}
+          onSaved={handleStudentSaved}
         />
       )}
     </div>

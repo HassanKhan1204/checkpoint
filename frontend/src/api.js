@@ -57,6 +57,39 @@ export function fetchPassages(gradeLevel) {
   return request(`/passages${query}`);
 }
 
+export function createStudent({ name, groupName, parentEmail }) {
+  return request("/students", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name,
+      group_name: groupName || null,
+      parent_email: parentEmail || null,
+    }),
+  });
+}
+
+// PUT replaces the whole record server-side, so contact/notes (not exposed
+// in the trimmed add/edit form) are passed through unchanged rather than
+// silently wiped to null on every edit.
+export function updateStudent(studentId, { name, groupName, parentEmail, contact, notes }) {
+  return request(`/students/${studentId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name,
+      group_name: groupName || null,
+      parent_email: parentEmail || null,
+      contact: contact ?? null,
+      notes: notes ?? null,
+    }),
+  });
+}
+
+export function deleteStudent(studentId) {
+  return request(`/students/${studentId}`, { method: "DELETE" });
+}
+
 export function logAssessment({ studentId, fluencyScore, accuracyPct, errorTags }) {
   return request("/events", {
     method: "POST",
