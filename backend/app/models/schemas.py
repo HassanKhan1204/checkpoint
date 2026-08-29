@@ -24,9 +24,14 @@ class StudentBase(BaseModel):
     group_name: Optional[str] = None
     contact: Optional[str] = None
     notes: Optional[str] = None
+    parent_email: Optional[EmailStr] = None
 
 
 class StudentCreate(StudentBase):
+    pass
+
+
+class StudentUpdate(StudentBase):
     pass
 
 

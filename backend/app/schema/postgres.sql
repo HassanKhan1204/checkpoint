@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS students (
     group_name TEXT,
     contact TEXT,
     notes TEXT,
+    -- Nullable: existing test/demo students predate this column.
+    parent_email TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
