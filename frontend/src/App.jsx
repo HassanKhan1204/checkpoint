@@ -73,6 +73,25 @@ function sortStudents(students) {
   });
 }
 
+// The class/group name shown in the header. Falls back to something
+// generic if students span more than one group.
+function groupHeading(students) {
+  if (students.length === 0) return null;
+  const groups = new Set(students.map((s) => s.group_name).filter(Boolean));
+  return groups.size === 1 ? [...groups][0] : "Your students";
+}
+
+// One understated line — not a stats dashboard, just a quick read on how
+// many students may need a look this week.
+function summarySentence(total, decliningCount) {
+  if (total === 0) return null;
+  if (decliningCount === 0) {
+    return "All students are on track this week.";
+  }
+  const noun = decliningCount === 1 ? "student" : "students";
+  return `${decliningCount} of ${total} ${noun} may need attention this week.`;
+}
+
 // A short, concrete line explaining why a student was flagged — the actual
 // score trend and error tags, not just "declining".
 function flagReason(student) {
@@ -225,6 +244,7 @@ export default function App() {
   );
 
   const selectedStudent = rows.find((s) => s.id === selectedId) ?? null;
+  const decliningCount = rows.filter((s) => s.status === "declining").length;
 
   async function handleLogAssessment(student, formEvent) {
     formEvent.preventDefault();
@@ -272,6 +292,13 @@ export default function App() {
       </div>
 
       {error && <p className="error">{error}</p>}
+
+      {rows.length > 0 && (
+        <div className="class-summary">
+          <h2 className="class-name">{groupHeading(rows)}</h2>
+          <p className="class-stat">{summarySentence(rows.length, decliningCount)}</p>
+        </div>
+      )}
 
       <div className="card-grid">
         {rows.map((student) => {

@@ -16,6 +16,23 @@
   margin-bottom: var(--space-5);
 }
 
+.class-summary {
+  margin-bottom: var(--space-6);
+}
+
+.class-name {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  color: var(--color-heading);
+  margin: 0;
+}
+
+.class-stat {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin: var(--space-1) 0 0;
+}
+
 button {
   font-family: var(--font-body);
   font-size: var(--text-sm);
