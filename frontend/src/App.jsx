@@ -124,7 +124,7 @@ export default function App() {
 
   return (
     <div className="dashboard">
-      <h1>Checkpoint</h1>
+      <h1>Checkpoint — Reading Trends</h1>
 
       <div className="controls">
         <button onClick={refresh} disabled={loading}>
