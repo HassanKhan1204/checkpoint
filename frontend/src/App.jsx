@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Link, Navigate, Route, Routes } from "react-router-dom";
 import {
   fetchStudents,
   fetchDecliningStudentDrafts,
@@ -763,10 +764,128 @@ function StudentFormModal({ student, onClose, onSaved }) {
   );
 }
 
-export default function App() {
+const AuthContext = createContext(null);
+
+function useAuth() {
+  return useContext(AuthContext);
+}
+
+// Owns the session (token/teacher/authChecking) at the top of the tree so
+// both /login (redirect away once signed in) and /dashboard (redirect away
+// once signed out) can read and act on the same state via context, instead
+// of each route re-deriving it.
+function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem(AUTH_TOKEN_KEY));
   const [teacher, setTeacher] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
+
+  // Validate any stored token against the server on load (and whenever it
+  // changes) — a stale or tampered token in localStorage should drop back
+  // to the login screen, not surface as a broken dashboard.
+  useEffect(() => {
+    setAuthToken(token);
+    if (!token) {
+      setTeacher(null);
+      setAuthChecking(false);
+      return;
+    }
+    let cancelled = false;
+    setAuthChecking(true);
+    fetchMe()
+      .then((current) => {
+        if (!cancelled) setTeacher(current);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          localStorage.removeItem(AUTH_TOKEN_KEY);
+          setAuthToken(null);
+          setToken(null);
+          setTeacher(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setAuthChecking(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  function handleAuthSuccess({ access_token, teacher: signedInTeacher }) {
+    localStorage.setItem(AUTH_TOKEN_KEY, access_token);
+    setToken(access_token);
+    setTeacher(signedInTeacher);
+  }
+
+  function handleLogout() {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    setAuthToken(null);
+    setToken(null);
+    setTeacher(null);
+  }
+
+  return (
+    <AuthContext.Provider value={{ teacher, authChecking, handleAuthSuccess, handleLogout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+function AuthLoadingScreen() {
+  return (
+    <div className="auth-screen">
+      <p className="listen-loading">Loading…</p>
+    </div>
+  );
+}
+
+// Guards /dashboard: bounce to /login if there's no signed-in teacher.
+function RequireAuth({ children }) {
+  const { teacher, authChecking } = useAuth();
+  if (authChecking) return <AuthLoadingScreen />;
+  if (!teacher) return <Navigate to="/login" replace />;
+  return children;
+}
+
+// Wraps the login/signup form: if a teacher is already signed in, there's
+// nothing to do here — send them straight to the dashboard instead.
+function LoginRoute() {
+  const { teacher, authChecking, handleAuthSuccess } = useAuth();
+  if (authChecking) return <AuthLoadingScreen />;
+  if (teacher) return <Navigate to="/dashboard" replace />;
+  return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+}
+
+// The public landing page — no login required. Its one job is to explain
+// what Checkpoint is and point a visitor at the right next step, which
+// depends on whether they're already signed in.
+function HomePage() {
+  const { teacher } = useAuth();
+
+  return (
+    <div className="auth-screen">
+      <div className="auth-hero">
+        <BrandMark size={72} />
+        <h1 className="auth-brand-name">Checkpoint</h1>
+        <p className="auth-tagline">Catch reading dips early — reach families before they grow.</p>
+      </div>
+
+      <div className="auth-card home-card">
+        <p className="home-pitch">
+          Teachers log a quick fluency check-in after each reading session. Checkpoint watches
+          for a real decline — not just a noisy off day — and drafts a warm, concrete note home
+          the moment one shows up.
+        </p>
+        <Link to={teacher ? "/dashboard" : "/login"} className="home-cta">
+          {teacher ? "Go to your dashboard" : "Log in"}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function DashboardPage() {
+  const { teacher, handleLogout } = useAuth();
 
   const [students, setStudents] = useState([]);
   const [decliningList, setDecliningList] = useState([]);
@@ -802,60 +921,14 @@ export default function App() {
     }
   }
 
-  // Validate any stored token against the server on load (and whenever it
-  // changes) — a stale or tampered token in localStorage should drop back
-  // to the login screen, not surface as a broken dashboard.
+  // This component only ever mounts once RequireAuth has confirmed a
+  // signed-in teacher, and unmounts (discarding all state below) the moment
+  // that stops being true — so a plain on-mount fetch is enough here; the
+  // session itself is AuthProvider's job.
   useEffect(() => {
-    setAuthToken(token);
-    if (!token) {
-      setTeacher(null);
-      setAuthChecking(false);
-      return;
-    }
-    let cancelled = false;
-    setAuthChecking(true);
-    fetchMe()
-      .then((current) => {
-        if (!cancelled) setTeacher(current);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          localStorage.removeItem(AUTH_TOKEN_KEY);
-          setAuthToken(null);
-          setToken(null);
-          setTeacher(null);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setAuthChecking(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
-
-  useEffect(() => {
-    if (teacher) refresh();
+    refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacher]);
-
-  function handleAuthSuccess({ access_token, teacher: signedInTeacher }) {
-    localStorage.setItem(AUTH_TOKEN_KEY, access_token);
-    setToken(access_token);
-    setTeacher(signedInTeacher);
-  }
-
-  function handleLogout() {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    setAuthToken(null);
-    setToken(null);
-    setTeacher(null);
-    setStudents([]);
-    setDecliningList([]);
-    setOkHistoryById(new Map());
-    setSelectedId(null);
-    setListenStudentId(null);
-  }
+  }, []);
 
   useEffect(() => {
     if (selectedId === null && listenStudentId === null && studentModal === null && removeConfirmId === null) {
@@ -935,26 +1008,14 @@ export default function App() {
     }
   }
 
-  if (authChecking) {
-    return (
-      <div className="auth-screen">
-        <p className="listen-loading">Loading…</p>
-      </div>
-    );
-  }
-
-  if (!teacher) {
-    return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
-  }
-
   return (
     <>
       <header className="site-header">
         <div className="site-header-inner">
-          <div className="brand">
+          <Link to="/" className="brand">
             <BrandMark />
             <span className="brand-name">Checkpoint</span>
-          </div>
+          </Link>
           <AccountMenu teacherName={teacher.name} onLogout={handleLogout} />
         </div>
       </header>
@@ -1134,5 +1195,25 @@ export default function App() {
         )}
       </div>
     </>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginRoute />} />
+        <Route
+          path="/dashboard"
+          element={
+            <RequireAuth>
+              <DashboardPage />
+            </RequireAuth>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AuthProvider>
   );
 }

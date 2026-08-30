@@ -35,10 +35,14 @@
   color: var(--color-heading);
 }
 
+/* Also doubles as the site-header's link back to "/" — reset the anchor
+   defaults so it just looks like the wordmark, not a link. */
 .brand {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  text-decoration: none;
+  color: inherit;
 }
 
 /* Sized per-usage via the <img> width/height attributes (see BrandMark's
@@ -291,6 +295,42 @@ input {
 .auth-switch:hover {
   border-color: transparent;
   color: var(--color-accent-hover);
+}
+
+/* ---- Public home page — same hero shell as the login screen, a pitch
+ * and a single CTA in place of the form. ------------------------------- */
+
+.home-card {
+  gap: var(--space-5);
+}
+
+.home-pitch {
+  font-size: var(--text-base);
+  color: var(--color-text);
+  line-height: 1.6;
+  margin: 0;
+  text-align: center;
+}
+
+.home-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 700;
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  color: var(--color-surface);
+}
+
+.home-cta:hover {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+  color: var(--color-surface);
 }
 
 /* ---- Card grid ------------------------------------------------------ */
