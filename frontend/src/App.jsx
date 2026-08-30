@@ -180,6 +180,72 @@ function BrandMark() {
   return <img className="brand-mark" src="/logo.svg" alt="" width="40" height="40" />;
 }
 
+function initials(name) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+// A real menu component, not just a bare Log out button — one item today,
+// but the trigger/dropdown/click-outside/Escape plumbing is all in place
+// for whatever gets added next (account settings, switch account, ...).
+function AccountMenu({ teacherName, onLogout }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e) {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
+    }
+    function handleKeyDown(e) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className="account-menu" ref={rootRef}>
+      <button
+        type="button"
+        className="account-menu-trigger"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <span className="account-avatar" aria-hidden="true">
+          {initials(teacherName)}
+        </span>
+        <span className="account-name">{teacherName}</span>
+        <span className="account-caret" aria-hidden="true">
+          ▾
+        </span>
+      </button>
+      {open && (
+        <div className="account-menu-dropdown" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            className="account-menu-item"
+            onClick={() => {
+              setOpen(false);
+              onLogout();
+            }}
+          >
+            Log out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StatusBadge({ student }) {
   if (student.status === "declining") {
     return <span className="badge badge-declining">Needs attention</span>;
@@ -876,18 +942,22 @@ export default function App() {
   }
 
   return (
-    <div className="dashboard">
-      <div className="page-header">
-        <header className="app-header">
+    <>
+      <header className="site-header">
+        <div className="site-header-inner">
           <div className="brand">
             <BrandMark />
-            <h1>Checkpoint</h1>
+            <span className="brand-name">Checkpoint</span>
           </div>
-          <p className="app-tagline">
-            Checkpoint helps teachers spot reading trends early and reach out to families
-            before a small dip becomes a bigger gap.
-          </p>
-        </header>
+          <AccountMenu teacherName={teacher.name} onLogout={handleLogout} />
+        </div>
+      </header>
+
+      <div className="dashboard">
+        <p className="app-tagline">
+          Checkpoint helps teachers spot reading trends early and reach out to families
+          before a small dip becomes a bigger gap.
+        </p>
 
         <div className="controls">
           <button onClick={refresh} disabled={loading}>
@@ -896,21 +966,16 @@ export default function App() {
           <button type="button" onClick={() => setStudentModal({ mode: "add" })}>
             + Add student
           </button>
-          <span className="signed-in-as">Signed in as {teacher.name}</span>
-          <button type="button" className="logout-button" onClick={handleLogout}>
-            Log out
-          </button>
         </div>
 
         {error && <p className="error">{error}</p>}
-      </div>
 
-      {rows.length > 0 && (
-        <div className="class-summary">
-          <h2 className="class-name">{groupHeading(rows)}</h2>
-          <p className="class-stat">{summarySentence(rows.length, decliningCount)}</p>
-        </div>
-      )}
+        {rows.length > 0 && (
+          <div className="class-summary">
+            <h2 className="class-name">{groupHeading(rows)}</h2>
+            <p className="class-stat">{summarySentence(rows.length, decliningCount)}</p>
+          </div>
+        )}
 
       <div className="card-grid">
         {rows.map((student) => {
@@ -1054,13 +1119,14 @@ export default function App() {
         />
       )}
 
-      {studentModal && (
-        <StudentFormModal
-          student={studentModal.mode === "edit" ? studentModal.student : null}
-          onClose={() => setStudentModal(null)}
-          onSaved={handleStudentSaved}
-        />
-      )}
-    </div>
+        {studentModal && (
+          <StudentFormModal
+            student={studentModal.mode === "edit" ? studentModal.student : null}
+            onClose={() => setStudentModal(null)}
+            onSaved={handleStudentSaved}
+          />
+        )}
+      </div>
+    </>
   );
 }

@@ -25,6 +25,7 @@
 
   --color-accent: #d97b3f; /* warm terracotta — links, focus, primary actions */
   --color-accent-hover: #c0672e;
+  --color-accent-soft: #f7e2d0; /* soft accent tint — the account-menu avatar badge */
 
   /* ---- Color: status -------------------------------------------------
    * Three states, each a calm signal rather than a verdict:

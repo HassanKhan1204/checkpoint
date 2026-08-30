@@ -4,26 +4,35 @@
   padding: 0 var(--space-4);
 }
 
-/* The header, tagline, and controls form one visually distinct band,
- * set off from the roster below by a soft border rather than just
- * whitespace — with a small accent flourish instead of a flat, sterile
- * rule. */
-.page-header {
-  position: relative;
+/* ---- Site header — a persistent chrome bar, not page content --------
+ * Sticky so it stays put while the roster scrolls beneath it; a subtle
+ * border (not the accent-flourish treatment used elsewhere) is enough
+ * to separate app chrome from the page underneath.
+ * ------------------------------------------------------------------ */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
-  padding-bottom: var(--space-5);
-  margin-bottom: var(--space-6);
 }
 
-.page-header::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  width: 64px;
-  height: 3px;
-  border-radius: var(--radius-pill);
-  background: var(--color-accent);
+.site-header-inner {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.brand-name {
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-heading);
 }
 
 .app-header {
@@ -129,14 +138,80 @@ input {
   color: var(--color-status-attention-text);
 }
 
-.signed-in-as {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  margin-left: auto;
+/* ---- Account menu — structured as a real menu (trigger + dropdown),
+ * even though "Log out" is the only item today. ------------------------ */
+
+.account-menu {
+  position: relative;
 }
 
-.logout-button {
+.account-menu-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   background: transparent;
+  border-color: transparent;
+  padding: var(--space-1) var(--space-2);
+}
+
+.account-menu-trigger:hover {
+  background: var(--color-surface-muted);
+  border-color: transparent;
+}
+
+.account-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.account-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.account-caret {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.account-menu-dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  min-width: 160px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card-hover);
+  padding: var(--space-2);
+  z-index: 60;
+}
+
+.account-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border-color: transparent;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.account-menu-item:hover {
+  background: var(--color-surface-muted);
+  border-color: transparent;
 }
 
 /* ---- Auth screen -------------------------------------------------------
