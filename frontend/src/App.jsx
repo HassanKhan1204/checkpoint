@@ -174,19 +174,10 @@ function buildMailtoHref(student) {
   return `mailto:${to}?subject=${subject}&body=${body}`;
 }
 
-// The open-book mark from public/favicon.svg, inlined so it can pick up
-// currentColor and sit in the header at whatever size fits.
+// public/logo.svg — the same file the favicon is generated from, so the
+// header mark and the browser tab icon are always the same image.
 function BrandMark() {
-  return (
-    <span className="brand-mark" aria-hidden="true">
-      <svg viewBox="0 0 32 32" width="24" height="24">
-        <path
-          d="M16 11.5c-2.4-1.8-5.4-2.7-8-2.7-.7 0-1.2.6-1.2 1.2v11.2c0 .7.5 1.2 1.2 1.2 2.6 0 5.6.9 8 2.7 2.4-1.8 5.4-2.7 8-2.7.7 0 1.2-.5 1.2-1.2V10c0-.7-.5-1.2-1.2-1.2-2.6 0-5.6.9-8 2.7z"
-          fill="currentColor"
-        />
-      </svg>
-    </span>
-  );
+  return <img className="brand-mark" src="/logo.svg" alt="" width="40" height="40" />;
 }
 
 function StatusBadge({ student }) {
