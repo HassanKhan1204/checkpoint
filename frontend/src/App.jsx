@@ -175,9 +175,11 @@ function buildMailtoHref(student) {
 }
 
 // public/logo.svg — the same file the favicon is generated from, so the
-// header mark and the browser tab icon are always the same image.
-function BrandMark() {
-  return <img className="brand-mark" src="/logo.svg" alt="" width="40" height="40" />;
+// header mark, the login page hero, and the browser tab icon are always
+// the same image. size is a plain width/height attribute (not a CSS
+// class), so each usage can size it independently.
+function BrandMark({ size = 40 }) {
+  return <img className="brand-mark" src="/logo.svg" alt="" width={size} height={size} />;
 }
 
 function initials(name) {
@@ -612,45 +614,49 @@ function AuthScreen({ onAuthSuccess }) {
   }
 
   return (
-    <div className="dashboard auth-screen">
-      <header className="app-header">
-        <div className="brand">
-          <BrandMark />
-          <h1>Checkpoint</h1>
-        </div>
-        <p className="app-tagline">
-          Checkpoint helps teachers spot reading trends early and reach out to families
-          before a small dip becomes a bigger gap.
-        </p>
-      </header>
+    <div className="auth-screen">
+      <div className="auth-hero">
+        <BrandMark size={72} />
+        <h1 className="auth-brand-name">Checkpoint</h1>
+        <p className="auth-tagline">Catch reading dips early — reach families before they grow.</p>
+      </div>
 
       <form className="auth-card" onSubmit={handleSubmit}>
         <h2 className="auth-title">{mode === "signup" ? "Create your account" : "Welcome back"}</h2>
 
         {mode === "signup" && (
+          <label className="form-field">
+            <span>Name</span>
+            <input
+              type="text"
+              placeholder="Your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </label>
+        )}
+        <label className="form-field">
+          <span>Email</span>
           <input
-            type="text"
-            placeholder="Your name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            type="email"
+            placeholder="you@school.edu"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
-        )}
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          minLength={8}
-          required
-        />
+        </label>
+        <label className="form-field">
+          <span>Password</span>
+          <input
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            minLength={8}
+            required
+          />
+        </label>
 
         {error && <p className="error">{error}</p>}
 
@@ -931,7 +937,7 @@ export default function App() {
 
   if (authChecking) {
     return (
-      <div className="dashboard auth-screen">
+      <div className="auth-screen">
         <p className="listen-loading">Loading…</p>
       </div>
     );

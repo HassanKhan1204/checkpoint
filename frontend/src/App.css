@@ -35,28 +35,20 @@
   color: var(--color-heading);
 }
 
-.app-header {
-  margin-bottom: var(--space-5);
-}
-
 .brand {
   display: flex;
   align-items: center;
   gap: var(--space-3);
 }
 
+/* Sized per-usage via the <img> width/height attributes (see BrandMark's
+   size prop) — this rule only handles what's constant across sizes. The
+   logo already has its own rounded-square background baked in, so no
+   extra badge wrapper is needed. */
 .brand-mark {
-  width: 40px;
-  height: 40px;
   flex-shrink: 0;
-  /* The logo already has its own rounded-square background baked in —
-     no extra badge wrapper needed. */
+  display: block;
   border-radius: var(--radius-sm);
-}
-
-.dashboard h1 {
-  font-size: var(--text-2xl);
-  margin: 0;
 }
 
 .app-tagline {
@@ -214,52 +206,78 @@ input {
   border-color: transparent;
 }
 
-/* ---- Auth screen -------------------------------------------------------
- * Same warm shell as the dashboard (header + tagline), just with a login/
- * signup card in place of the student list.
+/* ---- Auth screen — the first thing anyone sees, should read like a
+ * real product's login page: a full-viewport stage, a prominent logo,
+ * and a card that's clearly the page's one focal point rather than a
+ * form floating in empty space.
  * ------------------------------------------------------------------ */
 
 .auth-screen {
+  min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: var(--space-7);
+  justify-content: center;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-4);
+  /* A soft glow behind the card instead of a flat, empty page. */
+  background: radial-gradient(ellipse 640px 420px at 50% 42%, var(--color-accent-soft) 0%, transparent 70%),
+    var(--color-bg);
 }
 
-.auth-screen .app-header {
+.auth-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
   text-align: center;
 }
 
-.auth-screen .brand {
-  justify-content: center;
+.auth-hero .brand-mark {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card-hover);
+  margin-bottom: var(--space-2);
+}
+
+.auth-brand-name {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  color: var(--color-heading);
+  margin: 0;
+}
+
+.auth-tagline {
+  font-size: var(--text-base);
+  color: var(--color-text-muted);
+  max-width: 26rem;
+  margin: 0;
 }
 
 .auth-card {
+  position: relative;
   background: var(--color-surface);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-card-hover);
   padding: var(--space-6);
-  max-width: 360px;
+  max-width: 380px;
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
 .auth-title {
   font-family: var(--font-heading);
   font-size: var(--text-lg);
   color: var(--color-heading);
-  margin: 0 0 var(--space-2);
+  margin: 0;
   text-align: center;
 }
 
-.auth-card input {
-  width: 100%;
-}
-
 .auth-card button[type="submit"] {
-  margin-top: var(--space-2);
+  margin-top: var(--space-1);
 }
 
 .auth-switch {
